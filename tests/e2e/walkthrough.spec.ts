@@ -4,13 +4,20 @@ import { topics } from "../../src/domain/fixtures";
 import AxeBuilder from "@axe-core/playwright";
 
 /** Начинает новый сеанс через видимое объяснение ограничений. */
-async function begin(page: Page) {
+async function begin(page: Page, edit = true) {
   await page.goto("/");
   await page.getByRole("button", { name: "Начать интервью" }).click();
+  if (edit) await openEditor(page);
+}
+/** Открывает текстовую альтернативу тем же действием, которым пользуется человек. */
+async function openEditor(page: Page) {
+  const toggle = page.getByRole("button", { name: "Написать текстом" });
+  if (await toggle.isVisible()) await toggle.click();
 }
 /** Заполняет весь путь примерами, не обходя явные подтверждения. */
 async function finishAnswers(page: Page) {
   for (let i = 0; i < 4; i++) {
+    await openEditor(page);
     await page
       .getByRole("button", { name: "Вставить пример", exact: true })
       .click();
@@ -67,10 +74,10 @@ test("полный проход, редактирование, экспорт и
 test("тестовая запись, отмена и сохранение текста", async ({ page }) => {
   await begin(page);
   await page.getByLabel("Ваш ответ", { exact: true }).fill("Мой текст");
+  await page.getByRole("button", { name: "Начать запись" }).click();
   await page
-    .getByRole("button", { name: "Попробовать тестовую запись" })
+    .getByRole("button", { name: "Остановить запись", exact: true })
     .click();
-  await page.getByRole("button", { name: "Остановить", exact: true }).click();
   await expect(
     page.getByText("Тестовая расшифровка", { exact: true }),
   ).toBeVisible();
@@ -176,6 +183,7 @@ test("устаревший черновик и отмена сброса сох�
 test("неизвестные ответы не создают вымышленную вакансию", async ({ page }) => {
   await begin(page);
   for (let i = 0; i < 4; i++) {
+    await openEditor(page);
     await page
       .getByRole("button", { name: "Пока не знаю", exact: true })
       .click();
@@ -198,7 +206,7 @@ for (const width of [360, 768, 1440])
   }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await begin(page);
+    await begin(page, false);
     await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     expect(
       await page.evaluate(
@@ -240,7 +248,7 @@ test("доступность и клавиатура на начале, вопр
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
-    page.getByRole("button", { name: "Попробовать тестовую запись" }),
+    page.getByRole("button", { name: "Начать запись" }),
   ).toBeFocused();
   expect(
     (

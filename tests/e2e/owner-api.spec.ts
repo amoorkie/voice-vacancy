@@ -1,7 +1,13 @@
 // Браузер проверяет реальный клиентский адаптер с подставным серверным ответом, без внешних трат.
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { topics } from "../../src/domain/fixtures";
 import { sectionIds } from "../../src/contracts/interview";
+
+/** Раскрывает текстовый ввод перед работой с настоящим клиентским адаптером. */
+async function openEditor(page: Page) {
+  const toggle = page.getByRole("button", { name: "Написать текстом" });
+  if (await toggle.isVisible()) await toggle.click();
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/config", (route) =>
@@ -73,6 +79,7 @@ test("API: оценка, подтверждение, черновик с цит�
     page.getByText("Проверка и черновик через ваш API", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Начать интервью" }).click();
+  await openEditor(page);
   await page.getByLabel("Ваш ответ", { exact: true }).fill(topics[0].sample);
   await page
     .getByRole("button", { name: "Проверить ответ", exact: true })
@@ -80,6 +87,7 @@ test("API: оценка, подтверждение, черновик с цит�
   await expect(page.getByText("В ответе есть нужные сведения")).toBeVisible();
   await page.getByRole("button", { name: "Подтвердить и далее" }).click();
   for (let i = 1; i < 4; i++) {
+    await openEditor(page);
     await page.getByLabel("Ваш ответ", { exact: true }).fill(topics[i].sample);
     await page
       .getByRole("button", { name: "Подтвердить без проверки" })
@@ -122,6 +130,7 @@ test("API: ошибка провайдера оставляет ответ, бе
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Начать интервью" }).click();
+  await openEditor(page);
   await page
     .getByLabel("Ваш ответ", { exact: true })
     .fill("Мой произвольный ответ");
