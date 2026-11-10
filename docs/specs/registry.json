@@ -25,7 +25,8 @@
   },
   {
     "id": "F005",
-    "status": "ready-for-review",
+    "status": "accepted",
+    "acceptance_evidence": "docs/specs/005-iskra-workspace/spec.md",
     "path": "docs/specs/005-iskra-workspace/spec.md"
   }
 ]
