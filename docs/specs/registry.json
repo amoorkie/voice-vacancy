@@ -1,26 +1,26 @@
 [
   {
     "id": "F001",
-    "status": "draft",
+    "status": "accepted",
     "path": "docs/specs/001-interview/spec.md",
-    "acceptance_evidence": null
+    "acceptance_evidence": "docs/product/accepted-decisions-2026-11-10.md"
   },
   {
     "id": "F002",
-    "status": "draft",
+    "status": "accepted",
     "path": "docs/specs/002-voice-input/spec.md",
-    "acceptance_evidence": null
+    "acceptance_evidence": "docs/product/accepted-decisions-2026-11-10.md"
   },
   {
     "id": "F003",
-    "status": "draft",
+    "status": "accepted",
     "path": "docs/specs/003-answer-completeness/spec.md",
-    "acceptance_evidence": null
+    "acceptance_evidence": "docs/product/accepted-decisions-2026-11-10.md"
   },
   {
     "id": "F004",
-    "status": "draft",
+    "status": "accepted",
     "path": "docs/specs/004-vacancy-draft/spec.md",
-    "acceptance_evidence": null
+    "acceptance_evidence": "docs/product/accepted-decisions-2026-11-10.md"
   }
 ]
