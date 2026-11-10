@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -71,10 +72,15 @@ def check_registry() -> list[str]:
 def main() -> int:
     """Возвращает ненулевой код при нарушении проверяемой структуры документов."""
     errors = []
-    files = sorted(ROOT.rglob("*.md"))
+    # Исключаем зависимости, локальный runtime и артефакты до обхода подкаталогов.
+    # Иначе их README ломают ссылки проекта и завышают число проверенных документов.
+    excluded = {".git", "node_modules", ".venv", ".tools", "dist", "test-results", "playwright-report"}
+    files = []
+    for directory, children, names in os.walk(ROOT):
+        children[:] = [name for name in children if name not in excluded]
+        files.extend(Path(directory) / name for name in names if name.endswith(".md"))
+    files.sort()
     for path in files:
-        if any(part in {".git", "node_modules", ".venv"} for part in path.parts):
-            continue
         try:
             content = path.read_text(encoding="utf-8")
             if "\ufffd" in content:
