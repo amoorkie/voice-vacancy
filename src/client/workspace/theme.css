@@ -1,0 +1,57 @@
+/* Утилиты shadcn/ui загружаются без глобального сброса стилей самостоятельного интервью. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: #fff;
+  --color-foreground: #202121;
+  --color-card: #fff;
+  --color-primary: #171818;
+  --color-primary-foreground: #fff;
+  --color-secondary: #f2f3f3;
+  --color-secondary-foreground: #252626;
+  --color-muted: #f4f5f4;
+  --color-muted-foreground: #666b68;
+  --color-popover: #fff;
+  --color-popover-foreground: #202121;
+  --color-accent: #eeefee;
+  --color-accent-foreground: #141515;
+  --color-destructive: #9c3131;
+  --color-border: #dedfdd;
+  --color-input: #d5d8d5;
+  --color-ring: #716538;
+  --color-sidebar: #fafaf9;
+  --color-sidebar-foreground: #232424;
+  --color-sidebar-border: #e2e3e1;
+  --color-sidebar-accent: #f0f1ef;
+  --color-sidebar-accent-foreground: #202121;
+  --color-sidebar-ring: #716538;
+  --color-sidebar-primary: #171818;
+  --color-sidebar-primary-foreground: white;
+}
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}

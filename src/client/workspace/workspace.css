@@ -1,0 +1,571 @@
+/* Нейтральный рабочий кабинет «Искры». Компоненты меню в мобильном Sheet монтируются в портал. */
+@layer base {
+  :where(.isk-shell, [data-mobile="true"]) :where(button, input, select) {
+    font: inherit;
+    color: inherit;
+  }
+  :where(.isk-shell, [data-mobile="true"], [data-slot="sheet-overlay"]) {
+    box-sizing: border-box;
+  }
+  :where(.isk-shell, [data-mobile="true"]) *,
+  :where(.isk-shell, [data-mobile="true"]) *::before,
+  :where(.isk-shell, [data-mobile="true"]) *::after {
+    box-sizing: border-box;
+    border: 0 solid #e2e3e1;
+  }
+  :where(.isk-shell, [data-mobile="true"]) :where(button, input, select) {
+    background-color: transparent;
+  }
+  :where(.isk-shell, [data-mobile="true"]) button {
+    cursor: pointer;
+  }
+  :where(.isk-shell, [data-mobile="true"]) :where(h1, h2, h3, p, dl, dd) {
+    margin: 0;
+  }
+}
+.isk-shell,
+[data-mobile="true"] {
+  font:
+    14px/1.45 "Inter Variable",
+    Arial,
+    sans-serif;
+  color: #202220;
+  background: #fff;
+  --sidebar-width: 16rem;
+}
+.isk-shell :focus-visible,
+[data-mobile="true"] :focus-visible {
+  outline: 2px solid #74663b;
+  outline-offset: 2px;
+}
+.isk-main {
+  min-width: 0;
+}
+.isk-topbar {
+  min-height: 58px;
+  padding: 0 clamp(18px, 3vw, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e8e9e7;
+}
+.isk-topbar > div,
+.isk-demo,
+.isk-job-label,
+.isk-meta,
+.isk-meta span,
+.isk-kpis span,
+.isk-count,
+.isk-identity,
+.isk-filter,
+.isk-section-head,
+.isk-card-head,
+.isk-switch,
+.isk-pager {
+  display: flex;
+  align-items: center;
+}
+.isk-topbar > div {
+  gap: 12px;
+  font-size: 12px;
+}
+.isk-topbar > div > svg {
+  width: 13px;
+  height: 13px;
+  color: #989c98;
+}
+.isk-crumb,
+.isk-demo,
+.isk-card-head small,
+.isk-kpis span,
+.isk-analysis p,
+.isk-card dt,
+.isk-meta {
+  color: #616661;
+}
+.isk-demo {
+  gap: 6px;
+  font-size: 12px;
+}
+.isk-demo svg {
+  width: 14px;
+  height: 14px;
+}
+.isk-side-head {
+  padding: 20px 14px 12px;
+  gap: 9px;
+}
+.isk-identity {
+  gap: 10px;
+  margin: 0 0 15px 3px;
+}
+.isk-identity strong,
+.isk-identity small {
+  display: block;
+}
+.isk-identity strong {
+  letter-spacing: -0.7px;
+  line-height: 1.2;
+  font-size: 18px;
+}
+.isk-identity small {
+  font-size: 11px;
+  color: #626762;
+}
+.isk-identity > button {
+  margin-left: auto;
+}
+.isk-logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font:
+    29px/1 Georgia,
+    serif;
+  background: #202120;
+  color: #f9be57;
+}
+.isk-find {
+  position: relative;
+}
+.isk-find svg {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 15px;
+  height: 15px;
+  color: #717571;
+}
+.isk-find input {
+  height: 35px;
+  font-size: 12px;
+  padding-left: 32px;
+  border: 1px solid #dfe1dc;
+  background: white;
+}
+.isk-filter {
+  gap: 7px;
+  width: 100%;
+  padding: 0 9px;
+  border: 1px solid #dedfdd;
+  border-radius: 7px;
+  background: white;
+}
+.isk-filter svg {
+  width: 14px;
+  height: 14px;
+}
+.isk-filter select {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  font-size: 12px;
+}
+.isk-side-body {
+  padding: 4px 12px;
+}
+.isk-no-matches {
+  padding: 12px 4px;
+}
+.isk-no-matches p {
+  margin-bottom: 8px;
+}
+.isk-group {
+  margin-bottom: 18px;
+}
+.isk-group h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #676c68;
+  font-weight: 550;
+  font-size: 11px;
+  margin: 4px 6px 6px;
+}
+.isk-group h2 svg {
+  width: 12px;
+  height: 12px;
+}
+.isk-group h2 span {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.isk-job[data-slot] {
+  width: 100%;
+  height: auto;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 9px 10px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  white-space: normal;
+}
+.isk-job[aria-current="page"] {
+  background: #fff;
+  border-color: #b9bdb6;
+  box-shadow: 0 1px 3px #00000009;
+}
+.isk-job strong,
+.isk-job small {
+  display: block;
+}
+.isk-job strong {
+  font-size: 13px;
+  font-weight: 580;
+}
+.isk-job small {
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 11px;
+  color: #676b66;
+}
+.isk-dot,
+.isk-status i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #43825b;
+}
+[data-status="paused"].isk-dot,
+.isk-status[data-status="paused"] i {
+  background: #a07432;
+}
+[data-status="draft"].isk-dot,
+.isk-status[data-status="draft"] i {
+  background: #858a86;
+}
+.isk-side-foot {
+  padding: 14px;
+  border-top: 1px solid #e0e2de;
+}
+.isk-side-foot button {
+  width: 100%;
+  min-height: 37px;
+}
+.isk-page {
+  max-width: 1530px;
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(22px, 2.3vw, 34px) clamp(18px, 3vw, 48px) 38px;
+}
+.isk-job-label {
+  gap: 10px;
+  color: #5f645f;
+  font-size: 12px;
+}
+.isk-status[data-slot] {
+  background: #ecf5ed;
+  color: #355c42;
+  font-size: 11px;
+  padding: 2px 8px;
+  gap: 5px;
+  font-weight: 550;
+}
+.isk-status[data-status="paused"] {
+  background: #fbf1dc;
+  color: #78561d;
+}
+.isk-status[data-status="draft"] {
+  background: #efefee;
+  color: #575957;
+}
+.isk-job-head h1 {
+  font-size: clamp(25px, 2.6vw, 39px);
+  font-weight: 620;
+  letter-spacing: -0.055em;
+  line-height: 1.12;
+  margin: 10px 0;
+}
+.isk-meta {
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.isk-meta span {
+  gap: 5px;
+  font-size: 12px;
+}
+.isk-meta svg,
+.isk-kpis svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.6;
+}
+.isk-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid #dedfdd;
+  border-radius: 10px;
+  margin: 22px 0 24px;
+  background: linear-gradient(110deg, #fafbf9, white);
+}
+.isk-kpis > div {
+  padding: 13px 18px 12px;
+}
+.isk-kpis > div + div {
+  border-left: 1px solid #dedfdd;
+}
+.isk-kpis span {
+  gap: 7px;
+  font-size: 12px;
+}
+.isk-kpis strong {
+  display: block;
+  font:
+    580 28px/1.15 "Inter Variable",
+    sans-serif;
+  letter-spacing: -1.5px;
+  margin-top: 5px;
+}
+.isk-section-head {
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 13px;
+}
+.isk-switch {
+  padding: 3px;
+  gap: 2px;
+  background: #f2f3f1;
+  border: 1px solid #e4e5e2;
+  border-radius: 8px;
+}
+.isk-switch button {
+  height: 29px;
+  font-size: 12px;
+  padding: 0 10px;
+  border-radius: 5px;
+  color: #646863;
+}
+.isk-switch button[aria-pressed="true"] {
+  color: #1e211e;
+  background: white;
+  box-shadow: 0 1px 4px #0002;
+}
+.isk-switch span,
+.isk-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #e7e9e5;
+  color: #585d57;
+}
+.isk-pager {
+  gap: 5px;
+}
+.isk-pager button {
+  height: 29px;
+  width: 29px;
+}
+.isk-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  padding: 2px 1px 6px;
+}
+.isk-card {
+  flex: 0 0 calc((100% - 24px) / 3);
+  min-width: 215px;
+  scroll-snap-align: start;
+  border: 1px solid #dfe1dc;
+  border-radius: 10px;
+  padding: 15px 14px;
+}
+.isk-card-head {
+  gap: 9px;
+}
+.isk-rank {
+  display: grid;
+  place-items: center;
+  min-width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  background: #f6f2e8;
+  color: #72603c;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.isk-card h3 {
+  font-size: 13px;
+  font-weight: 620;
+}
+.isk-card-head small {
+  display: block;
+  font-size: 10px;
+}
+.isk-score {
+  margin-left: auto;
+  text-align: right;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 620;
+}
+.isk-score small {
+  margin-top: 3px;
+  font-weight: 450;
+}
+.isk-card dl {
+  display: flex;
+  gap: 16px;
+  margin-top: 14px;
+  border-top: 1px solid #eceeeb;
+  padding-top: 11px;
+}
+.isk-card dt,
+.isk-heat-note {
+  font-size: 11px;
+}
+.isk-card dd {
+  font-size: 13px;
+  font-weight: 570;
+  margin-top: 3px;
+}
+.isk-analysis {
+  margin-top: 21px;
+  border-top: 1px solid #e3e5e2;
+  padding-top: 20px;
+}
+.isk-section-head h2 {
+  font-size: 19px;
+  letter-spacing: -0.6px;
+  font-weight: 620;
+}
+.isk-section-head p {
+  font-size: 12px;
+  margin-top: 3px;
+}
+.isk-count {
+  white-space: nowrap;
+  border: 1px solid #dfe2dd;
+  background: #fafbf9;
+}
+.isk-heat-scroll {
+  overflow-x: auto;
+}
+.isk-heat {
+  width: 100%;
+  border-spacing: 4px;
+  table-layout: fixed;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.isk-heat th {
+  font-weight: 500;
+  color: #555b55;
+  font-size: 11px;
+}
+.isk-heat thead th {
+  height: 23px;
+}
+.isk-heat th:first-child {
+  text-align: left;
+  padding-left: 2px;
+  width: 80px;
+}
+.isk-heat td {
+  text-align: center;
+  height: 27px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--heat) 24%, white);
+  color: #646761;
+}
+.isk-heat td[data-filled="true"] {
+  background: var(--heat);
+  font-weight: 570;
+  color: #332f27;
+}
+.isk-heat [data-band="0"] {
+  --heat: #edb1a3;
+}
+.isk-heat [data-band="1"] {
+  --heat: #f0c1ae;
+}
+.isk-heat [data-band="2"] {
+  --heat: #f1ceb2;
+}
+.isk-heat [data-band="3"] {
+  --heat: #f4df9b;
+}
+.isk-heat [data-band="4"] {
+  --heat: #e7e3a2;
+}
+.isk-heat [data-band="5"] {
+  --heat: #b5dab3;
+}
+.isk-heat-note {
+  margin: 7px 2px 0;
+}
+.isk-table th,
+.isk-table td {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 12px;
+}
+.isk-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 70px 20px;
+  gap: 9px;
+  color: #646a64;
+}
+.isk-empty > svg {
+  width: 26px;
+  height: 26px;
+}
+.isk-empty h1,
+.isk-empty h2 {
+  font-size: 20px;
+  color: #242824;
+}
+.isk-empty p {
+  font-size: 13px;
+}
+.isk-empty button {
+  margin-top: 6px;
+}
+@media (max-width: 767px) {
+  .isk-topbar {
+    min-height: 49px;
+  }
+  .isk-card {
+    flex-basis: 79%;
+    min-width: 190px;
+  }
+  .isk-page {
+    padding: 21px 14px 28px;
+  }
+  .isk-kpis > div {
+    padding: 10px 7px;
+  }
+  .isk-kpis span {
+    gap: 4px;
+    font-size: 11px;
+  }
+  .isk-kpis svg {
+    width: 12px;
+  }
+  .isk-kpis strong {
+    font-size: 24px;
+  }
+  .isk-heat {
+    border-spacing: 2px;
+  }
+  .isk-heat th:first-child {
+    width: 60px;
+  }
+  .isk-heat th {
+    font-size: 9px;
+  }
+  .isk-section-head {
+    flex-wrap: wrap;
+  }
+  .isk-switch button {
+    padding: 0 7px;
+  }
+}

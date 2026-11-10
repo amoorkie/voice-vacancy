@@ -6,6 +6,11 @@ import AxeBuilder from "@axe-core/playwright";
 /** Начинает новый сеанс через видимое объяснение ограничений. */
 async function begin(page: Page, edit = true) {
   await page.goto("/");
+  if (
+    !(await page.getByRole("button", { name: "Добавить вакансию" }).isVisible())
+  )
+    await page.getByRole("button", { name: "Открыть список вакансий" }).click();
+  await page.getByRole("button", { name: "Добавить вакансию" }).click();
   await page.getByRole("button", { name: "Начать интервью" }).click();
   if (edit) await openEditor(page);
 }
@@ -34,9 +39,10 @@ async function finishAnswers(page: Page) {
 test("полный проход, редактирование, экспорт и отсутствие внешних запросов", async ({
   page,
 }) => {
+  const origin = new URL(test.info().project.use.baseURL!).origin;
   const unexpected: string[] = [];
   page.on("request", (request) => {
-    if (!request.url().startsWith("http://127.0.0.1:4317"))
+    if (new URL(request.url()).origin !== origin)
       unexpected.push(request.url());
   });
   await page.addInitScript(() => {
@@ -230,6 +236,11 @@ test("доступность и клавиатура на начале, вопр
 }, testInfo) => {
   test.setTimeout(60000);
   await page.goto("/");
+  if (
+    !(await page.getByRole("button", { name: "Добавить вакансию" }).isVisible())
+  )
+    await page.getByRole("button", { name: "Открыть список вакансий" }).click();
+  await page.getByRole("button", { name: "Добавить вакансию" }).click();
   await page.screenshot({
     path: testInfo.outputPath("intro.png"),
     fullPage: true,

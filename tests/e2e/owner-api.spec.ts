@@ -74,7 +74,7 @@ test("API: оценка, подтверждение, черновик с цит�
       },
     });
   });
-  await page.goto("/");
+  await page.goto("/?view=interview");
   await expect(
     page.getByText("Проверка и черновик через ваш API", { exact: true }),
   ).toBeVisible();
@@ -128,7 +128,7 @@ test("API: ошибка провайдера оставляет ответ, бе
       },
     }),
   );
-  await page.goto("/");
+  await page.goto("/?view=interview");
   await page.getByRole("button", { name: "Начать интервью" }).click();
   await openEditor(page);
   await page
