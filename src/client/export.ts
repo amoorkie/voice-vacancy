@@ -7,10 +7,10 @@ import { resultStale, type Session } from "../domain/session";
 export function summaryText(state: Session) {
   return [
     "Сводка ответов",
-    "Тестовый прототип. Оценки на примерах не являются проверкой модели.",
+    "Оценка полноты не заменяет проверку фактов человеком.",
     ...state.answers.map(
       (a, i) =>
-        `\n${i + 1}. ${topics[i].title}\n${a.confirmed ? "Подтверждено" : "Не подтверждено / не завершено"}${a.evaluation ? `; тестовая оценка: ${a.evaluation.items.filter((item) => item.status === "present").length} из ${a.evaluation.items.length}, неизвестно: ${a.evaluation.items.filter((item) => item.status === "explicitly_unknown").length}` : "; полнота не проверена"}\n${a.text || "Ответ пока не заполнен"}`,
+        `\n${i + 1}. ${topics[i].title}\n${a.confirmed ? "Подтверждено" : "Не подтверждено / не завершено"}${a.evaluation ? `; ${a.evaluation.kind === "ai" ? "оценка модели" : "тестовая оценка"}: ${a.evaluation.items.filter((item) => item.status === "present").length} из ${a.evaluation.items.length}, неизвестно: ${a.evaluation.items.filter((item) => item.status === "explicitly_unknown").length}` : "; полнота не проверена"}\n${a.text || "Ответ пока не заполнен"}`,
     ),
   ].join("\n");
 }
@@ -18,7 +18,9 @@ export function summaryText(state: Session) {
 export function vacancyText(state: Session) {
   if (!state.result) return "";
   return [
-    "Черновик вакансии — тестовый пример",
+    state.result.generated.origin === "ai"
+      ? "Черновик вакансии — результат модели, проверьте факты"
+      : "Черновик вакансии — тестовый пример",
     resultStale(state)
       ? "Устаревший черновик: ответы изменились."
       : "По текущим подтверждённым ответам.",

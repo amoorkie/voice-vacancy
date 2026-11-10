@@ -2,6 +2,11 @@
 import { createApp } from "./app.js";
 const app = createApp();
 try {
+  if (
+    process.env.HOST &&
+    !["127.0.0.1", "localhost", "::1"].includes(process.env.HOST)
+  )
+    throw new Error("Разрешён только локальный запуск");
   await app.listen({
     host: process.env.HOST ?? "127.0.0.1",
     port: Number(process.env.PORT ?? 4317),
