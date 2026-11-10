@@ -15,6 +15,7 @@
 9. [Как я использую ИИ](process/ai-worklog.md).
 10. [Порядок PR и комплект сдачи](delivery/roadmap.md).
 11. [Четыре спецификации](specs/README.md), [общие правила](specs/shared-rules.md) и [карта проверки](specs/coverage.md).
+12. [Технический план](technical/plan.md), [21 задача](technical/tasks.md), [сервисы и бюджет](technical/services-and-budget.md), [данные и API](technical/data-and-api.md).
 
 Ревью сохранены отдельно: [JTBD и сценарий](product/reviews/jtbd-flow-2026-11-10.md), [спецификации](specs/reviews/specs-2026-11-10.md). Контрольные случаи — в [scenario-cases.md](product/scenario-cases.md).
 
