@@ -2,20 +2,15 @@
 
 Я сохраняю здесь путь от задачи до требований и будущей реализации. Документы проходят через PR вместе с проектом.
 
-## В каком порядке я работаю
+## С чего начать работу над F005
 
-1. [Исходное задание](product/brief.md).
-2. [Исследование похожих решений](research/competitive-review.md).
-3. [Работы пользователя — JTBD](product/jtbd.md).
-4. [Пользовательский сценарий](product/user-flow.md).
-5. [Границы](product/scope-and-decisions.md) и [принятые решения](product/accepted-decisions-2026-11-10.md).
-6. [План проверки гипотез](product/validation-plan.md).
-7. [Правила spec-driven development](process/spec-driven-development.md).
-8. [Почему я выбрал такую основу](decisions/0001-spec-driven-foundation.md).
-9. [Как я использую ИИ](process/ai-worklog.md).
-10. [Порядок PR и комплект сдачи](delivery/roadmap.md).
-11. [Четыре спецификации](specs/README.md), [общие правила](specs/shared-rules.md) и [карта проверки](specs/coverage.md).
-12. [Технический план](technical/plan.md), [21 задача](technical/tasks.md), [сервисы и бюджет](technical/services-and-budget.md), [данные и API](technical/data-and-api.md).
+1. В [спеке](specs/005-iskra-workspace/spec.md) я задаю цель, границы и поведение функции. Для неё использую [задание](product/brief.md), [исследование аналогов](research/competitive-review.md), [исследование «Искры»](research/iskra-live-ui-2026-11-10.md) и [решения по интервью](product/accepted-decisions-2026-11-10.md).
+2. Из спеки вывожу [план](specs/005-iskra-workspace/plan.md). В начале плана связываю требования с [JTBD](product/jtbd.md), [пользовательским флоу](product/user-flow.md) и исключениями. Дальше описываю компоненты, данные, работу двух панелей и критерии проверки.
+3. По плану составляю [задачи](specs/005-iskra-workspace/tasks.md). Для каждого PR видно, из каких решений плана он вытекает и какой результат можно проверить.
+
+Базовые функции интервью описаны в [реестре спецификаций](specs/README.md), [общих правилах](specs/shared-rules.md) и [карте проверки](specs/coverage.md). По ним составлены [общий технический план](technical/plan.md), [задачи](technical/tasks.md), [оценка сервисов и бюджета](technical/services-and-budget.md) и [контракт данных](technical/data-and-api.md).
+
+Порядок работы описан в [процессе SDD](process/spec-driven-development.md). Дополнительные материалы — [границы продукта](product/scope-and-decisions.md), [план проверки гипотез](product/validation-plan.md), [решение об устройстве репозитория](decisions/0001-spec-driven-foundation.md), [журнал](process/ai-worklog.md) и [комплект сдачи](delivery/roadmap.md).
 
 Ревью сохранены отдельно: [JTBD и сценарий](product/reviews/jtbd-flow-2026-11-10.md), [спецификации](specs/reviews/specs-2026-11-10.md). Контрольные случаи — в [scenario-cases.md](product/scenario-cases.md).
 
@@ -38,5 +33,3 @@ F001–F004 и общие правила имеют статус accepted на �
 Перенос выбранного экрана в код: [результаты проверки и снимки](verification/003-voice-interview-ui.md), [сравнение с макетом](../design-qa.md).
 
 Место функции в продукте: [контекст «Искры», проверенная точка входа и границы интеграции](product/iskra-context.md).
-
-Следующий срез F005, ready-for-review: [исследование живого кабинета со снимками](research/iskra-live-ui-2026-11-10.md) → [spec.md — бизнес-требования](specs/005-iskra-workspace/spec.md) → [plan.md — реализация и проверки](specs/005-iskra-workspace/plan.md) → [tasks.md: 18 задач и следующие интеграции](specs/005-iskra-workspace/tasks.md). Интервью остаётся справа, превью выезжает из-под него влево. Новая композиция ещё не реализована; общее прежнее описание заменено этим комплектом.
