@@ -484,3 +484,63 @@ test("правлю статью сразу, разделяю и объединя
   await expect(item(1)).toHaveValue(/Разрабатывать формы/);
   await expect(title).toHaveValue("Разработчик кабинета");
 });
+
+test("накопленная расшифровка редактируется без ухода к прежнему бейджу", async ({
+  page,
+}) => {
+  await enter(page);
+  await answerTopic(page);
+  const saved = page.getByLabel("Задачи", { exact: true });
+  await expect(saved).toHaveValue(workspaceSamples[0]);
+  await expect(saved).toBeVisible();
+  await saved.fill(workspaceSamples[0] + " Проверять формы.");
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "0",
+  );
+  await saved.press("Enter");
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "1",
+  );
+  await expect(page.getByLabel("Расшифровка", { exact: true })).toHaveValue("");
+  await expect(saved).toHaveValue(workspaceSamples[0] + " Проверять формы.");
+});
+
+test("карточка распознавания сохраняет текст, отменяется и учитывает reduced motion", async ({
+  page,
+}) => {
+  const time = new Date("2026-11-11T12:00:00Z");
+  await page.clock.install({ time });
+  await enter(page);
+  await page.clock.pauseAt(new Date(time.getTime() + 1000));
+  const answer = page.getByLabel("Расшифровка", { exact: true });
+  await answer.fill("Мой термин");
+  await page
+    .getByRole("button", { name: "Дополнить запись", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Остановить запись", exact: true })
+    .click();
+  await expect(page.locator(".ix-transcription")).toBeVisible();
+  await expect(answer).toHaveValue("Мой термин");
+  await expect(answer).not.toBeEditable();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator(".ix-transcription-lines span").first()).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await expect(page.locator(".ix-transcription-wave i").first()).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await page.getByRole("button", { name: "Отменить", exact: true }).click();
+  await page.clock.runFor(1000);
+  await expect(page.locator(".ix-transcription")).toHaveCount(0);
+  await expect(answer).toBeEditable();
+  await expect(answer).toHaveValue("Мой термин");
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "0",
+  );
+});

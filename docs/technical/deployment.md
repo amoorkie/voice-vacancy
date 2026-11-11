@@ -12,10 +12,9 @@
 | Отдельный Node | /opt/voice-vacancy/node-v26.13.0-linux-x64 |
 | Сервис | voice-vacancy.service, пользователь voice-vacancy |
 | Закрытая конфигурация | /etc/voice-vacancy/app.env, права 0600 |
-| Постоянный счётчик API | /var/lib/voice-vacancy/api-budget.json |
 | Маршрут nginx | /etc/nginx/snippets/iskra.conf |
 
-Конфиги сервиса и маршрута лежат в [deploy/portfolio](../../deploy/portfolio). Ключа API в архиве релиза и Git нет. В env задаю AI_ENABLED, WIKIVIBE_API_KEY, WIKIVIBE_API_BASE, WIKIVIBE_MODEL, AI_MAX_CALLS, PUBLIC_ORIGIN и AI_BUDGET_PATH. Для этой выкладки PUBLIC_ORIGIN=https://amo0orkie.ru, AI_BUDGET_PATH=/var/lib/voice-vacancy/api-budget.json, HOST=127.0.0.1, PORT=4327. Счётчик переносится из локальной проверки и сохраняется между релизами.
+Конфиги сервиса и маршрута лежат в [deploy/portfolio](../../deploy/portfolio). Ключа API в архиве релиза и Git нет. В env задаю AI_ENABLED, WIKIVIBE_API_KEY, WIKIVIBE_API_BASE, WIKIVIBE_MODEL и PUBLIC_ORIGIN. Для этой выкладки PUBLIC_ORIGIN=https://amo0orkie.ru, HOST=127.0.0.1, PORT=4327. Настройки старой накопительной квоты удалены из env. Архивный журнал не читается приложением.
 
 ## Выпуск
 
@@ -28,17 +27,17 @@
 
 ## Откат
 
-При следующем выпуске сохраняю previous. Для отката направляю current на предыдущий каталог и перезапускаю только voice-vacancy.service. При первой установке можно убрать include iskra.conf из HTTPS server после резервной копии, выполнить nginx -t и reload. Env и журнал использованных API-попыток сохраняю. Архивы и каталоги прежних релизов остаются на диске.
+При следующем выпуске сохраняю previous. Для отката направляю current на предыдущий каталог и перезапускаю только voice-vacancy.service. При первой установке можно убрать include iskra.conf из HTTPS server после резервной копии, выполнить nginx -t и reload. Закрытый env сохраняю в резерве своего выпуска. Архивы и каталоги прежних релизов остаются на диске.
 
 ## Ограничения показа
 
-Запись работает с настоящим микрофоном, расшифровка выполняется на сервере. Генерация обращается к моему API. Ответы не сохраняются между перезагрузками вкладки. Общий лимит API задаю через AI_MAX_CALLS, расход не обнуляется при смене релиза.
+Запись работает с настоящим микрофоном, расшифровка выполняется на сервере. Генерация обращается к моему API. Ответы не сохраняются между перезагрузками вкладки. Общей накопительной квоты генераций нет. Действуют защита от дублей, один активный запрос и шесть запросов в минуту.
 
 
 ## Настоящий голос
 
 В `/opt/voice-vacancy/asr-venv` установлено отдельное Python-окружение по [asr-requirements.txt](../../deploy/portfolio/asr-requirements.txt). Модель base скачана в `/opt/voice-vacancy/asr-models`. Дистрибутив и документация — [faster-whisper](https://github.com/SYSTRAN/faster-whisper), лицензия MIT. Модель и окружение остаются на сервере между релизами.
 
-В env сервиса задаю `ASR_ENABLED=true`, `ASR_PYTHON=/opt/voice-vacancy/asr-venv/bin/python`, `ASR_MODEL_PATH=/opt/voice-vacancy/asr-models/base`. Worker [transcribe.py](../../deploy/portfolio/transcribe.py) включён в каждый релиз. Python получает WAV в stdin и возвращает JSON. CPU ограничен одним потоком, приоритет сервиса понижен относительно портфолио. Запросы распознавания не расходуют платный лимит DeepSeek.
+В env сервиса задаю `ASR_ENABLED=true`, `ASR_PYTHON=/opt/voice-vacancy/asr-venv/bin/python`, `ASR_MODEL_PATH=/opt/voice-vacancy/asr-models/base`. Worker [transcribe.py](../../deploy/portfolio/transcribe.py) включён в каждый релиз. Python получает WAV в stdin и возвращает JSON. CPU ограничен одним потоком, приоритет сервиса понижен относительно портфолио. Распознавание не вызывает платный текстовый API DeepSeek.
 
 Проверяю, что `/api/config` сообщает `voice=microphone`, документ разрешает `microphone=(self)`, Nginx допускает тело до 6 МБ и использует `proxy_request_buffering off`. Для проверки использую синтетическую русскую фразу и тишину.

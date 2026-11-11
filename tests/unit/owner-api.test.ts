@@ -1,11 +1,7 @@
 // Проверки границы провайдера не используют настоящий ключ и не расходуют баланс.
 import { afterEach, expect, test, vi } from "vitest";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createApp } from "../../src/server/app";
-import { CallBudget } from "../../src/server/call-budget";
 import {
   parseDraft,
   parseEvaluation,
@@ -18,10 +14,6 @@ const cleanups: (() => Promise<unknown> | void)[] = [];
 afterEach(async () => {
   for (const close of cleanups.splice(0)) await close();
 });
-/** Даёт изолированный журнал, чтобы тесты не меняли локальный лимит пользователя. */
-function ledgerPath() {
-  return join(mkdtempSync(join(tmpdir(), "voice-api-")), "budget.json");
-}
 /** Формирует вымышленные сведения с новыми идентификаторами каждой попытки. */
 function input(): EvaluationInput {
   return {
@@ -56,7 +48,6 @@ async function setup(fetcher: typeof fetch, extra = {}) {
       baseUrl: "https://api.wikivibe.dev/v1",
       fetcher,
     },
-    budgetPath: ledgerPath(),
     ...extra,
   });
   cleanups.push(() => app.close());
@@ -151,11 +142,11 @@ test("ошибка баланса не раскрывает тело прова�
   expect(response.json().value).toBeUndefined();
 });
 
-test("повтор и исчерпание резерва не создают новые внешние вызовы", async () => {
+test("повтор запроса отклоняется, новая попытка не ограничена накопительной квотой", async () => {
   const fetcher = vi.fn(async () =>
     Response.json({ error: {} }, { status: 500 }),
   ) as typeof fetch;
-  const { app, headers } = await setup(fetcher, { maxCalls: 1 });
+  const { app, headers } = await setup(fetcher);
   const payload = input();
   await app.inject({
     method: "POST",
@@ -182,8 +173,8 @@ test("повтор и исчерпание резерва не создают н
         payload: input(),
       })
     ).statusCode,
-  ).toBe(429);
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  ).toBe(503);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 test("тайм-аут прекращает транспорт без автоматического повтора", async () => {
@@ -237,21 +228,53 @@ test.each(["length", "stop"])(
   },
 );
 
-test("журнал переживает перезапуск, второй процесс и повреждение закрывают доступ", () => {
-  const path = ledgerPath();
-  const first = new CallBudget(path, 1);
-  first.reserve("one");
-  const second = new CallBudget(path, 1);
-  expect(() => second.reserve("two")).toThrow("budget-unavailable");
-  second.close();
-  first.close();
-  const restarted = new CallBudget(path, 1);
-  expect(() => restarted.reserve("two")).toThrow("budget-exhausted");
-  restarted.close();
-  writeFileSync(path, "corrupt");
-  const corrupt = new CallBudget(path, 1);
-  expect(() => corrupt.reserve("three")).toThrow("budget-unavailable");
-  corrupt.close();
+test("более 20 вызовов доступны, а минутная частота по-прежнему ограничена", async () => {
+  const fetcher = vi.fn(async () =>
+    Response.json({
+      choices: [
+        {
+          finish_reason: "stop",
+          message: { content: JSON.stringify(evaluation(input().text)) },
+        },
+      ],
+    }),
+  ) as typeof fetch;
+  const { app, headers } = await setup(fetcher);
+  let now = Date.now();
+  const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+  try {
+    for (let i = 0; i < 25; i++) {
+      now += 11000;
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/completeness",
+        headers,
+        payload: input(),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().code).not.toBe("budget-exhausted");
+    }
+    expect(fetcher).toHaveBeenCalledTimes(25);
+    now += 61000;
+    for (let i = 0; i < 6; i++)
+      await app.inject({
+        method: "POST",
+        url: "/api/completeness",
+        headers,
+        payload: input(),
+      });
+    const limited = await app.inject({
+      method: "POST",
+      url: "/api/completeness",
+      headers,
+      payload: input(),
+    });
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json().code).toBe("rate-limited");
+    expect(fetcher).toHaveBeenCalledTimes(31);
+  } finally {
+    clock.mockRestore();
+  }
 });
 
 test("чужая цитата, второй вопрос и ложный конфликт проверяются независимо от модели", () => {

@@ -25,6 +25,10 @@ for (const silent of [true, false]) {
           "--use-file-for-fake-audio-capture=" + file,
         ],
       });
+      let releaseTranscription!: () => void;
+      const transcriptionReady = new Promise<void>((resolve) => {
+        releaseTranscription = resolve;
+      });
       try {
         const context = await browser.newContext({
           permissions: ["microphone"],
@@ -58,6 +62,7 @@ for (const silent of [true, false]) {
           const wave = Buffer.from(data.audio, "base64");
           expect(wave.toString("ascii", 0, 4)).toBe("RIFF");
           expect(wave.readUInt32LE(24)).toBe(16000);
+          await transcriptionReady;
           await route.fulfill({
             json: {
               requestId: data.requestId,
@@ -107,6 +112,16 @@ for (const silent of [true, false]) {
         }
         await page.getByRole("button", { name: "Остановить запись" }).click();
         const answer = page.getByLabel("Расшифровка", { exact: true });
+        if (!silent) {
+          await expect(page.locator(".ix-transcription")).toBeVisible();
+          await expect(page.getByRole("status")).toContainText(
+            "Распознаю речь",
+          );
+          await expect(
+            page.getByRole("button", { name: "Отменить", exact: true }),
+          ).toBeVisible();
+          releaseTranscription();
+        }
         if (silent) {
           await expect(page.getByRole("status")).toContainText(
             "Речь не обнаружена",
@@ -124,6 +139,12 @@ for (const silent of [true, false]) {
           );
           await expect(answer).toHaveValue("");
           await expect(page.locator(".ix-question h3")).toBeFocused();
+          const saved = page.getByLabel("Задачи", { exact: true });
+          await expect(saved).toHaveValue(
+            "Это распознанная речь, полученная с сервера.",
+          );
+          await expect(saved).toBeVisible();
+          await expect(saved).toBeEditable();
           await page.getByRole("button", { name: /Задачи — Готово/ }).click();
           await expect(answer).toHaveValue(
             "Это распознанная речь, полученная с сервера.",
@@ -139,6 +160,7 @@ for (const silent of [true, false]) {
           silent ? "0" : "1",
         );
       } finally {
+        releaseTranscription();
         await browser.close();
       }
     },

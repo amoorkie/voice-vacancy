@@ -11,7 +11,6 @@ import {
 } from "../contracts/owner-api.js";
 import { evaluationPrompt, draftPrompt } from "./prompts.js";
 import { ApiError, completeJson, type ProviderConfig } from "./provider.js";
-import { CallBudget } from "./call-budget.js";
 import {
   speechAvailable,
   registerTranscription,
@@ -20,8 +19,6 @@ import {
 export type AppOptions = {
   transcriber?: Transcriber;
   provider?: ProviderConfig;
-  budgetPath?: string;
-  maxCalls?: number;
   deadlineMs?: number;
 };
 
@@ -39,13 +36,6 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
       : undefined);
   const mode = provider ? "api" : enabled ? "unavailable" : "fixtures";
   const token = randomBytes(32).toString("hex");
-  const budget = provider
-    ? new CallBudget(
-        options.budgetPath ??
-          (process.env.AI_BUDGET_PATH || resolve(".local/api-budget.json")),
-        options.maxCalls ?? Number(process.env.AI_MAX_CALLS ?? 20),
-      )
-    : undefined;
   const app = Fastify({ logger: false, bodyLimit: 500000 });
   const port = process.env.PORT ?? "4317";
   const hosts = new Set([
@@ -74,8 +64,8 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
     origins.add(publicUrl.origin);
   }
   let active = false;
-  let recent: number[] = [];
-  app.addHook("onClose", async () => budget?.close());
+  // Минутное окно защищает от повторов и случайных частых кликов, общей квоты генераций нет.
+  let recent: { id: string; at: number }[] = [];
   app.addHook("onRequest", async (request, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "no-referrer");
@@ -120,11 +110,7 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
     "/api/:operation",
     async (request, reply) => {
       const operation = request.params.operation;
-      if (
-        !provider ||
-        !budget ||
-        !["completeness", "vacancy"].includes(operation)
-      )
+      if (!provider || !["completeness", "vacancy"].includes(operation))
         return reply.code(503).send({
           code: "integration-disabled",
           message: "Эта обработка пока не подключена. Ваш текст сохранён.",
@@ -144,35 +130,19 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
           message: "Проверьте длину и подтверждение ответов.",
         });
       const input = parsed.data;
-      recent = recent.filter((t) => Date.now() - t < 60000);
+      recent = recent.filter((attempt) => Date.now() - attempt.at < 60000);
+      if (recent.some((attempt) => attempt.id === input.requestId))
+        return reply.code(409).send({
+          code: "duplicate-request",
+          message: "Эта попытка уже была отправлена.",
+        });
       if (active || recent.length >= 6)
         return reply.code(429).send({
           code: "rate-limited",
           message: "Подождите завершения запроса или повторите через минуту.",
         });
-      try {
-        budget.reserve(input.requestId);
-      } catch (error) {
-        const code =
-          error instanceof Error ? error.message : "budget-unavailable";
-        return reply
-          .code(
-            code === "duplicate-request"
-              ? 409
-              : code === "budget-exhausted"
-                ? 429
-                : 503,
-          )
-          .send({
-            code,
-            message:
-              code === "duplicate-request"
-                ? "Эта попытка уже была отправлена."
-                : "Локальный лимит API недоступен или исчерпан. Ваш текст сохранён.",
-          });
-      }
       active = true;
-      recent.push(Date.now());
+      recent.push({ id: input.requestId, at: Date.now() });
       const controller = new AbortController();
       const timer = setTimeout(
         () => controller.abort(),
