@@ -8,6 +8,7 @@ export function runFixture(
   attempt: Attempt,
   state: Session,
   deliver: (action: Action) => void,
+  samples?: readonly string[],
 ) {
   const timer = window.setTimeout(
     () => {
@@ -26,7 +27,7 @@ export function runFixture(
         deliver({
           type: "transcript",
           id: attempt.id,
-          text: topics[attempt.question].sample,
+          text: samples?.[attempt.question] ?? topics[attempt.question].sample,
         });
       if (attempt.kind === "evaluation") {
         const topic = topics[attempt.question];

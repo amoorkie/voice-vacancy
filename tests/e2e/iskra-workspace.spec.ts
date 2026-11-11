@@ -50,18 +50,16 @@ test("вход в интервью на тестовых данных, подк�
     page.getByRole("heading", { name: "Подключение вакансий" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "К интервью" }).click();
-  await page.getByRole("button", { name: "Начать интервью" }).click();
-  await page.getByRole("button", { name: "Написать текстом" }).click();
   await page
-    .getByLabel("Ваш ответ", { exact: true })
+    .getByLabel("Расшифровка", { exact: true })
     .fill("Поддерживать интеграции");
   await page.getByRole("button", { name: "В кабинет" }).click();
-  await page.getByRole("button", { name: "Оставить как есть" }).click();
-  await expect(page.getByLabel("Ваш ответ", { exact: true })).toHaveValue(
+  await page.getByRole("button", { name: "Остаться" }).click();
+  await expect(page.getByLabel("Расшифровка", { exact: true })).toHaveValue(
     "Поддерживать интеграции",
   );
   await page.getByRole("button", { name: "В кабинет" }).click();
-  await page.getByRole("button", { name: "Продолжить", exact: true }).click();
+  await page.getByRole("button", { name: "Выйти", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Backend Engineer" }),
   ).toBeVisible();
@@ -94,7 +92,7 @@ test("на телефоне открываю список вакансий, вы
   await menu.click();
   await page.getByRole("button", { name: "Добавить вакансию" }).click();
   await expect(
-    page.getByRole("button", { name: "Начать интервью" }),
+    page.getByRole("button", { name: "Начать запись" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "В кабинет" }).click();
   await expect(menu).toBeFocused();

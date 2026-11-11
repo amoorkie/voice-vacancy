@@ -1,0 +1,463 @@
+/* Портал Sheet находится вне оболочки кабинета. Базовое оформление сохраняет утилиты shadcn. */
+@layer base {
+  .composer-host :where(*, *::before, *::after) {
+    border: 0 solid #dedfdd;
+    box-sizing: border-box;
+  }
+  .composer-host :where(button, textarea, select) {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+  .composer-host button,
+  .composer-host summary {
+    cursor: pointer;
+  }
+  .composer-host :where(h2, h3, p, blockquote) {
+    margin: 0;
+  }
+}
+[data-slot="sheet-content"].composer-host {
+  display: block;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  transition: none;
+  pointer-events: none !important;
+  font:
+    14px/1.45 "Inter Variable",
+    Arial,
+    sans-serif;
+  color: #1e2022;
+}
+body:has(.composer-host) [data-slot="sheet-overlay"] {
+  background: rgb(33 37 43 / 28%);
+}
+.composer-host :focus-visible {
+  outline: 2px solid #955011;
+  outline-offset: 2px;
+}
+.ix-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #dedfdf;
+  border-radius: 24px;
+  pointer-events: auto;
+}
+.ix-interview {
+  position: absolute;
+  inset: 16px 16px 16px auto;
+  width: min(560px, calc(100% - 32px));
+  box-shadow: 0 12px 44px #181c2924;
+  animation: ix-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ix-enter {
+  from {
+    transform: translateX(calc(100% + 16px));
+  }
+  to {
+    transform: none;
+  }
+}
+/* Маска заканчивается под правой панелью. Двигается только её дочерний слой. */
+.ix-mask {
+  position: absolute;
+  inset: 16px 560px 16px auto;
+  width: min(720px, calc(100% - 576px));
+  overflow: clip;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear 320ms;
+}
+.ix-mask[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.ix-preview {
+  height: 100%;
+  padding-right: 16px;
+  transform: translateX(100%);
+  transition: transform 320ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+.ix-mask[data-open="true"] .ix-preview {
+  transform: translateX(0);
+}
+.ix-pane[inert] {
+  pointer-events: none;
+}
+.ix-head,
+.ix-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 26px;
+}
+.ix-head {
+  border-bottom: 1px solid #e6e7e6;
+}
+.ix-head h2 {
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.045em;
+  font-weight: 650;
+}
+.ix-head h2:focus {
+  outline: 0;
+}
+.ix-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5a5d60;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.ix-eyebrow i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f27818;
+}
+.ix-head [data-slot="button"] {
+  border-radius: 50%;
+  background: #f2f3f3;
+}
+.ix-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 20px 26px;
+  scrollbar-gutter: stable;
+}
+.ix-foot {
+  border-top: 1px solid #e6e7e6;
+  background: #fff;
+}
+.ix-voice {
+  display: grid;
+  justify-items: center;
+  row-gap: 2px;
+  padding: 0 0 16px;
+}
+.ix-voice strong {
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+.ix-voice > span,
+.ix-question p,
+.ix-answer-row span,
+.ix-section details,
+.ix-demo-options,
+.ix-notice p {
+  color: #5b6066;
+}
+.ix-voice > span {
+  font-size: 12px;
+}
+.ix-voice .progress-orbit {
+  position: relative;
+  width: clamp(158px, 22vh, 216px);
+  aspect-ratio: 1;
+  margin-bottom: 7px;
+}
+.ix-voice .progress-segments {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ix-voice .progress-segment {
+  stroke: #9ba1a7;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 150ms linear var(--segment-delay);
+}
+.ix-voice .progress-segment.is-filled {
+  stroke: #ef7313;
+}
+.ix-voice .orbit-center {
+  position: absolute;
+  inset: 19%;
+  display: grid;
+  place-items: stretch;
+}
+.ix-glass {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #eaf0f9;
+  box-shadow: 0 7px 14px #7589ae40;
+  transition: transform 0.2s;
+}
+.ix-glass img {
+  position: absolute;
+  width: 121%;
+  max-width: none;
+  left: -9.5%;
+  top: -10.5%;
+  z-index: -1;
+  pointer-events: none;
+}
+.ix-glass svg {
+  width: 33%;
+  height: 33%;
+  color: #39434c;
+  stroke-width: 1.5;
+}
+.ix-glass:hover:enabled {
+  transform: scale(1.035);
+}
+.ix-voice .is-recording .ix-glass {
+  animation: ix-pulse 1.45s ease-in-out infinite alternate;
+}
+@keyframes ix-pulse {
+  to {
+    box-shadow:
+      0 0 0 6px #d2e3fe77,
+      0 6px 24px #83a7dc77;
+  }
+}
+.ix-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+.ix-topics button {
+  border-radius: 99px;
+  padding: 0;
+}
+.ix-topics [data-slot="badge"] {
+  border: 1px solid #d6d9dc;
+  border-radius: 99px;
+  padding: 5px 9px;
+  gap: 5px;
+  background: #fafafa;
+  color: #41464b;
+  font-size: 12px;
+  font-weight: 500;
+}
+.ix-topics [data-active="true"] {
+  background: #fff1e7;
+  border-color: #ef9a55;
+  color: #82400c;
+}
+.ix-topics [data-done="true"] {
+  background: #edf5ef;
+  color: #2b603e;
+  border-color: #cbded2;
+}
+.ix-num {
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+.ix-question h3,
+.ix-review h3,
+.ix-prompt h3 {
+  font-size: 21px;
+  line-height: 1.22;
+  letter-spacing: -0.035em;
+  font-weight: 640;
+}
+.ix-question p {
+  margin: 6px 0 14px;
+  font-size: 13px;
+}
+.ix-label,
+.ix-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ix-label {
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ix-label label,
+.ix-answer-row strong {
+  font-size: 14px;
+  font-weight: 620;
+}
+.ix-pane textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #fafbfc;
+  field-sizing: content;
+  border: 1px solid #cdd1d5;
+}
+.ix-editor > .ix-actions {
+  margin-top: 8px;
+}
+.ix-feedback,
+.ix-fragment,
+.ix-notice {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: #f4f5f6;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.ix-fragment p,
+.ix-notice p {
+  margin: 6px 0;
+}
+.ix-review h3 {
+  margin-bottom: 8px;
+}
+.ix-answer-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7e8;
+}
+.ix-answer-row:hover {
+  background: #fafafa;
+}
+.ix-answer-row span,
+.ix-section blockquote {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ix-section {
+  padding: 0 0 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e6e7e6;
+}
+.ix-section details,
+.ix-demo-options {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.ix-section blockquote {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 2px solid #c7cdd3;
+}
+.ix-demo-options {
+  margin-top: 18px;
+}
+.ix-demo-options[open] > :not(summary) {
+  margin: 8px 6px 2px 0;
+}
+.ix-demo-options select {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 3px;
+}
+.ix-prompt-back {
+  z-index: 3;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #22262c40;
+  pointer-events: auto;
+}
+.ix-prompt {
+  background: white;
+  padding: 24px;
+  border-radius: 18px;
+  max-width: 400px;
+  box-shadow: 0 14px 48px #151b242b;
+}
+.ix-prompt p {
+  margin: 10px 0 18px;
+}
+@media (max-width: 1199px) {
+  .ix-mask {
+    right: 16px;
+    width: min(560px, calc(100% - 32px));
+    z-index: 1;
+  }
+  .ix-preview {
+    padding-right: 0;
+  }
+  .ix-interview[data-covered="true"] {
+    visibility: hidden;
+  }
+}
+@media (max-width: 639px) {
+  .ix-interview,
+  .ix-mask {
+    inset: 0;
+    width: 100%;
+  }
+  .ix-pane {
+    border-radius: 0;
+    border: 0;
+  }
+  .ix-scroll {
+    padding: 16px;
+  }
+  .ix-head,
+  .ix-foot {
+    padding: 12px 16px;
+  }
+  .ix-foot {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+  }
+  .ix-topics {
+    margin-bottom: 16px;
+  }
+  .ix-question h3 {
+    font-size: 19px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-host *,
+  .composer-host *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.ix-question-status {
+  display: block;
+  color: #5b6066;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+/* Закрытое для ввода интервью удерживает повторный клик внутри диалога. */
+@media (min-width: 1200px) {
+  .ix-interview-shield {
+    position: absolute;
+    inset: 16px 16px 16px auto;
+    width: 560px;
+    border-radius: 24px;
+    pointer-events: auto;
+  }
+}
+.ix-topics {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-items: start;
+}
+.ix-voice strong {
+  font-weight: 600;
+}

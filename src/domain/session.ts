@@ -70,7 +70,7 @@ export type Action =
   | { type: "message"; text: string }
   | { type: "failure"; id: string; text: string }
   | { type: "transcript"; id: string; text: string }
-  | { type: "apply-transcript" }
+  | { type: "apply-transcript"; append?: boolean }
   | { type: "evaluation"; id: string; value: Evaluation | null }
   | { type: "generated"; id: string; value: Draft | "insufficient" | null }
   | { type: "edit-result"; section: SectionId; text: string }
@@ -265,11 +265,12 @@ export function sessionReducer(state: Session, action: Action): Session {
       const a = state.active;
       if (!a || a.phase !== "candidate" || !attemptCurrent(state, a.id))
         return state;
-      const text = a.append
-        ? [state.answers[state.index].text, a.candidate]
-            .filter(Boolean)
-            .join("\n")
-        : a.candidate!;
+      const text =
+        (action.append ?? a.append)
+          ? [state.answers[state.index].text, a.candidate]
+              .filter(Boolean)
+              .join("\n")
+          : a.candidate!;
       return { ...editAnswer(state, state.index, text), active: undefined };
     }
     case "evaluation": {

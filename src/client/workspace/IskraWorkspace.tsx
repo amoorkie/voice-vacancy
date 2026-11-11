@@ -31,7 +31,7 @@ import {
   type Vacancy,
   type VacancyStatus,
 } from "@/domain/workspace";
-import { App } from "../App";
+import { VacancyComposer } from "./VacancyComposer";
 import { VacancyDashboard } from "./VacancyDashboard";
 import "./theme.css";
 import "./workspace.css";
@@ -54,7 +54,9 @@ function MenuButton() {
       variant="ghost"
       size="icon-sm"
       aria-expanded={expanded}
-      aria-label={expanded ? "Скрыть список вакансий" : "Открыть список вакансий"}
+      aria-label={
+        expanded ? "Скрыть список вакансий" : "Открыть список вакансий"
+      }
       onClick={toggleSidebar}
     >
       <PanelLeft />
@@ -261,8 +263,6 @@ export function IskraWorkspace() {
     restore.current = true;
     setScreen("workspace");
   }
-  if (screen === "interview")
-    return <App demo onExit={back} onConnect={() => setScreen("connect")} />;
   return (
     <SidebarProvider className="isk-shell">
       <VacancyMenu
@@ -312,6 +312,9 @@ export function IskraWorkspace() {
           </div>
         )}
       </SidebarInset>
+      {screen === "interview" && (
+        <VacancyComposer onExit={back} onConnect={() => setScreen("connect")} />
+      )}
     </SidebarProvider>
   );
 }
