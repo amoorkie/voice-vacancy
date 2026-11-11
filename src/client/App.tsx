@@ -19,34 +19,48 @@ import { initialSession, resultStale, sessionReducer } from "../domain/session";
 import { runFixture } from "./fixture-adapter";
 import { runOwnerApi, type RuntimeConfig } from "./owner-adapter";
 import { downloadText, summaryText, vacancyText } from "./export";
+import {
+  MicrophoneIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  DownloadSimpleIcon,
+  ArrowLeftIcon,
+  KeyboardIcon,
+  StopIcon,
+  CircleNotchIcon,
+} from "@phosphor-icons/react";
+import { ProgressRing } from "./ProgressRing";
 
-/** Единый набор простых векторных иконок; смысл всегда есть и в подписи кнопки. */
+/** Библиотечные иконки сохраняют единый рисунок; смысл действий есть в текстовых подписях. */
 function Icon({
   name,
 }: {
-  name: "mic" | "arrow" | "check" | "download" | "back";
+  name:
+    | "mic"
+    | "arrow"
+    | "check"
+    | "download"
+    | "back"
+    | "keyboard"
+    | "stop"
+    | "loading";
 }) {
-  const paths = {
-    mic: "M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0z M5 11v1a7 7 0 0 0 14 0v-1 M12 19v3 M8 22h8",
-    arrow: "M5 12h14 M13 6l6 6-6 6",
-    check: "M5 12l4 4L19 6",
-    download: "M12 3v12 M7 10l5 5 5-5 M5 17v4h14v-4",
-    back: "M19 12H5 M11 6l-6 6 6 6",
-  };
+  const Component = {
+    mic: MicrophoneIcon,
+    arrow: ArrowRightIcon,
+    check: CheckIcon,
+    download: DownloadSimpleIcon,
+    back: ArrowLeftIcon,
+    keyboard: KeyboardIcon,
+    stop: StopIcon,
+    loading: CircleNotchIcon,
+  }[name];
   return (
-    <svg
+    <Component
       aria-hidden="true"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={paths[name]} />
-    </svg>
+      size={22}
+      weight={name === "mic" ? "light" : "regular"}
+    />
   );
 }
 
@@ -91,78 +105,6 @@ function ConfirmDialog({
   );
 }
 
-/** Круг отображает смысловое покрытие текущей темы; до проверки не показывает выдуманный процент. */
-function ProgressRing({
-  present,
-  total,
-  unknown,
-  recording,
-  waiting,
-}: {
-  present?: number;
-  total: number;
-  unknown: number;
-  recording: boolean;
-  waiting: boolean;
-}) {
-  const circumference = 2 * Math.PI * 73;
-  return (
-    <div
-      className={`ring ${recording ? "recording" : ""} ${waiting ? "waiting" : ""}`}
-    >
-      <svg className="ring-svg" viewBox="0 0 180 180" aria-hidden="true">
-        <circle className="ring-track" cx="90" cy="90" r="73" />
-        <circle
-          className="ring-value"
-          cx="90"
-          cy="90"
-          r="73"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - (present ?? 0) / total)}
-        />
-      </svg>
-      <div className="ring-center">
-        {recording ? (
-          <span className="wave" aria-hidden="true">
-            ▂ ▅ ▃ ▆ ▃
-          </span>
-        ) : waiting ? (
-          <span className="waiting-dots" aria-hidden="true">
-            ···
-          </span>
-        ) : present === undefined ? (
-          <Icon name="mic" />
-        ) : (
-          <>
-            <strong>
-              {present}
-              <span>/{total}</span>
-            </strong>
-          </>
-        )}
-      </div>
-      <span className="sr-only">
-        {recording
-          ? "Тестовая запись"
-          : waiting
-            ? "Обработка ответа"
-            : present === undefined
-              ? "Полнота не проверена"
-              : `Есть сведения: ${present} из ${total}; явно неизвестно: ${unknown}`}
-      </span>
-      {present !== undefined && !recording && !waiting && (
-        <meter
-          className="sr-only"
-          min="0"
-          max={total}
-          value={present}
-          aria-label="Смысловое покрытие ответа"
-        />
-      )}
-    </div>
-  );
-}
-
 /** Соединяет доменные события с UI; тестовый адаптер запускается только для активной попытки. */
 export function App() {
   const [runtime, setRuntime] = useState<RuntimeConfig>();
@@ -177,6 +119,7 @@ export function App() {
   }>();
   const [supplement, setSupplement] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
   const latest = useRef(state);
@@ -187,7 +130,22 @@ export function App() {
   const busy = active?.phase === "waiting";
   const recording = active?.phase === "recording";
   const candidate = active?.phase === "candidate";
+  const editorVisible =
+    editingIndex === state.index || !!answer.text || !!candidate;
+  const recordLabel = recording
+    ? "Остановить запись"
+    : busy
+      ? "Обрабатываем ответ…"
+      : candidate
+        ? "Проверьте расшифровку"
+        : "Начать запись";
+
   const confirmed = state.answers.filter((a) => a.confirmed).length;
+  const [previousConfirmed, setPreviousConfirmed] = useState(confirmed);
+  useEffect(() => {
+    // Обзор получает прежнее значение, чтобы последняя четверть заполнилась и после смены экрана.
+    setPreviousConfirmed(confirmed);
+  }, [confirmed]);
   const present = answer.evaluation?.items.filter(
     (item) => item.status === "present",
   ).length;
@@ -195,6 +153,10 @@ export function App() {
     answer.evaluation?.items.filter(
       (item) => item.status === "explicitly_unknown",
     ).length ?? 0;
+
+  useEffect(() => {
+    if (editingIndex === state.index) editor.current?.focus();
+  }, [editingIndex, state.index]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -217,8 +179,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    heading.current?.focus();
+    heading.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
     setSupplement(null);
+    setEditingIndex(null);
   }, [state.stage, state.index]);
   useEffect(() => {
     if (active?.phase !== "waiting") return;
@@ -270,6 +234,7 @@ export function App() {
   /** Просит согласие перед заменой уже введённого материала. */
   function replaceText(text: string) {
     const run = () => {
+      setEditingIndex(state.index);
       dispatch({ type: "edit", index: state.index, text });
       editor.current?.focus();
     };
@@ -316,6 +281,17 @@ export function App() {
     else dispatch({ type: "navigate", index });
   }
 
+  /** Завершение сохраняет ответы; активную запись или расшифровку сначала явно отменяют. */
+  function review() {
+    if (recording || candidate)
+      setModal({
+        title: "Завершить интервью?",
+        text: "Текущая тестовая запись или непринятая расшифровка будут отменены. Уже введённые ответы сохранятся в обзоре.",
+        run: () => dispatch({ type: "review" }),
+      });
+    else dispatch({ type: "review" });
+  }
+
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -324,21 +300,14 @@ export function App() {
           href="#main"
           aria-label="Voice Vacancy, перейти к содержимому"
         >
-          <span className="brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          voice<span>vacancy</span>
+          voice vacancy
         </a>
-        <span className="demo-badge">
-          <i />
-          {live
-            ? "Ваш API · текст"
-            : runtime?.mode === "unavailable"
-              ? "API недоступен"
-              : "Тестовый прототип"}
-        </span>
+        <span className="header-purpose">Создание вакансии</span>
+        {state.stage !== "intro" && (
+          <button className="text-button finish-button" onClick={review}>
+            Завершить
+          </button>
+        )}
       </header>
       <main id="main">
         {state.stage === "intro" ? (
@@ -354,12 +323,12 @@ export function App() {
               будущего сотрудника.
             </p>
             <div className="intro-ring">
-              <ProgressRing
-                total={4}
-                unknown={0}
-                recording={false}
-                waiting={false}
-              />
+              <ProgressRing completed={0} compact>
+                <span className="glass-surface">
+                  <img src="/assets/microphone-glass.png" alt="" />
+                </span>
+                <Icon name="mic" />
+              </ProgressRing>
             </div>
             <button
               className="primary large"
@@ -403,310 +372,332 @@ export function App() {
           </section>
         ) : (
           <div className="workspace">
-            <aside className="sidebar" aria-label="Ход интервью">
-              <div className="eyebrow">ВАША БУДУЩАЯ КОМАНДА</div>
-              <h2>Начнём с главного</h2>
-              <p>
-                Что человек будет делать
-                <br />и зачем это нужно.
-              </p>
-              <nav aria-label="Темы интервью">
-                {topics.map((item, index) => (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(index)}
-                    aria-current={
-                      state.stage === "interview" && state.index === index
-                        ? "step"
-                        : undefined
-                    }
-                  >
-                    <span
-                      className={`step-number ${state.answers[index].confirmed ? "done" : ""}`}
-                    >
-                      {state.answers[index].confirmed ? (
-                        <Icon name="check" />
-                      ) : (
-                        `0${index + 1}`
-                      )}
-                    </span>
-                    <span>
-                      {item.short}
-                      {state.answers[index].text &&
-                        !state.answers[index].confirmed && (
-                          <small>Черновик ответа</small>
-                        )}
-                    </span>
-                  </button>
-                ))}
-              </nav>
-              <div className="sidebar-bottom">
-                <span>Подтверждено {confirmed} из 4</span>
+            <nav className="topic-nav" aria-label="Темы интервью">
+              {topics.map((item, index) => (
                 <button
-                  className="text-button"
-                  onClick={() => dispatch({ type: "review" })}
+                  key={item.id}
+                  onClick={() => navigate(index)}
+                  aria-label={item.short}
+                  aria-current={
+                    state.stage === "interview" && state.index === index
+                      ? "step"
+                      : undefined
+                  }
+                  className={
+                    state.answers[index].confirmed ? "is-confirmed" : ""
+                  }
                 >
-                  К обзору ответов <Icon name="arrow" />
+                  <span className="topic-number" aria-hidden="true">
+                    {state.answers[index].confirmed ? (
+                      <Icon name="check" />
+                    ) : (
+                      `0${index + 1}`
+                    )}
+                  </span>
+                  <span>{item.short}</span>
+                  <span className="sr-only">
+                    {state.answers[index].confirmed ? ", подтверждено" : ""}
+                  </span>
                 </button>
-                {state.result && (
-                  <button
-                    className="text-button"
-                    onClick={() => dispatch({ type: "result" })}
-                  >
-                    Открыть черновик
-                  </button>
-                )}
-              </div>
-            </aside>
-            <div className="content">
+              ))}
+            </nav>
+            {state.result && state.stage !== "result" && (
+              <button
+                className="text-button result-return"
+                onClick={() => dispatch({ type: "result" })}
+              >
+                Открыть черновик
+              </button>
+            )}
+            <div
+              className={`content ${state.stage === "interview" && !editorVisible ? "is-idle" : ""}`}
+            >
               {state.stage === "interview" && (
-                <section className="question-panel" key={state.index}>
+                <section
+                  className={`question-panel ${editorVisible ? "has-answer" : ""}`}
+                >
                   <div className="question-top">
                     <span className="eyebrow">
-                      ВОПРОС {state.index + 1} ИЗ 4
+                      {
+                        [
+                          "ЗАДАЧИ СОТРУДНИКА",
+                          "ПЕРВОЕ ПОЛУГОДИЕ",
+                          "ДАЛЬНЕЙШИЙ ФОКУС",
+                          "ИНСТРУМЕНТЫ И ЗНАНИЯ",
+                        ][state.index]
+                      }
                     </span>
-                    <span className="muted">{topic.short}</span>
                   </div>
                   <h1 ref={heading} tabIndex={-1}>
                     {topic.title}
                   </h1>
                   <p className="question-hint">{topic.hint}</p>
                   <div className="voice-area">
-                    <ProgressRing
-                      present={present}
-                      total={state.index === 3 ? 3 : 2}
-                      unknown={unknown}
-                      recording={!!recording}
-                      waiting={!!busy}
-                    />
-                    <div className="ring-caption">
-                      {recording
-                        ? `Тестовая запись · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-                        : busy
-                          ? active?.kind === "evaluation"
-                            ? "Проверяем пример…"
-                            : "Готовим тестовую расшифровку…"
-                          : present === undefined
-                            ? "Полнота не проверена"
-                            : `Есть сведения: ${present} из ${state.index === 3 ? 3 : 2}${unknown ? ` · неизвестно: ${unknown}` : ""}`}
-                    </div>
-                    {recording ? (
+                    <ProgressRing completed={confirmed} recording={!!recording}>
                       <button
-                        className="record-button"
-                        onClick={() => dispatch({ type: "stop" })}
+                        id="record-action"
+                        className={`glass-button ${busy ? "is-waiting" : ""}`}
+                        aria-label={recordLabel}
+                        aria-describedby="record-disclosure"
+                        disabled={!!busy || !!candidate}
+                        onClick={() =>
+                          recording
+                            ? dispatch({ type: "stop" })
+                            : start("transcription")
+                        }
                       >
-                        <span className="stop-icon" />
-                        Остановить
+                        <span className="glass-surface">
+                          <img
+                            src="/assets/microphone-glass.png"
+                            alt=""
+                            draggable="false"
+                          />
+                        </span>
+                        <Icon
+                          name={recording ? "stop" : busy ? "loading" : "mic"}
+                        />
                       </button>
-                    ) : (
-                      !active && (
-                        <button
-                          className="record-button"
-                          onClick={() => start("transcription")}
-                        >
-                          <Icon name="mic" />
-                          Попробовать тестовую запись
-                        </button>
-                      )
-                    )}
-                    {!active && (
-                      <span className="micro-note">
-                        Без микрофона — используем готовый пример
-                      </span>
-                    )}
+                    </ProgressRing>
+                    <label
+                      className="record-label"
+                      htmlFor="record-action"
+                      aria-hidden="true"
+                    >
+                      {recordLabel}
+                    </label>
+                    <p className="ring-caption" aria-live="polite">
+                      Подтверждено {confirmed} из 4 тем
+                    </p>
+                    <p className="micro-note" id="record-disclosure">
+                      {recording
+                        ? `Тестовая запись · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 2:00`
+                        : "Тестовая запись — без микрофона"}
+                    </p>
                     {(recording || busy) && (
                       <button
-                        className="text-button"
+                        className="text-button cancel-record"
                         onClick={() => dispatch({ type: "cancel" })}
                       >
                         Отменить
                       </button>
                     )}
                   </div>
-                  {candidate && (
-                    <div className="notice candidate">
-                      <strong>Тестовая расшифровка</strong>
-                      <p>{active?.candidate}</p>
-                      <div className="actions">
-                        <button
-                          className="primary"
-                          onClick={() => dispatch({ type: "apply-transcript" })}
-                        >
-                          {active?.append
-                            ? "Добавить к ответу"
-                            : answer.text
-                              ? "Заменить ответ"
-                              : "Использовать текст"}
-                        </button>
-                        <button onClick={() => dispatch({ type: "cancel" })}>
-                          Оставить свой текст
-                        </button>
-                      </div>
-                    </div>
+                  {!editorVisible && (
+                    <button
+                      className="text-button text-alternative"
+                      aria-expanded={false}
+                      aria-controls="answer-workspace"
+                      onClick={() => setEditingIndex(state.index)}
+                    >
+                      <Icon name="keyboard" />
+                      Написать текстом
+                    </button>
                   )}
-                  <div className="editor-heading">
-                    <label htmlFor="answer">Ваш ответ</label>
-                    <span>
-                      {textLength(answer.text)} / {MAX_TEXT}
-                    </span>
-                  </div>
-                  <textarea
-                    id="answer"
-                    ref={editor}
-                    rows={4}
-                    value={answer.text}
-                    aria-describedby="answer-help answer-error"
-                    aria-invalid={textLength(answer.text) > MAX_TEXT}
-                    onChange={(event) =>
-                      dispatch({
-                        type: "edit",
-                        index: state.index,
-                        text: event.target.value,
-                      })
-                    }
-                    placeholder="Напишите своими словами. Или начните с примера."
-                  />
-                  <p id="answer-error" className="error-text">
-                    {textLength(answer.text) > MAX_TEXT
-                      ? "Ответ длиннее 6000 символов. Сократите его, чтобы продолжить. Весь текст сохранён."
-                      : ""}
-                  </p>
-                  <div className="editor-tools" id="answer-help">
-                    <button
-                      className="text-button"
-                      disabled={!!active}
-                      onClick={() => replaceText(topic.sample)}
-                    >
-                      Вставить пример
-                    </button>
-                    <button
-                      className="text-button"
-                      disabled={!!active}
-                      onClick={() => replaceText(unknownAnswer)}
-                    >
-                      Пока не знаю
-                    </button>
-                    {answer.text && (
+                  <div
+                    id="answer-workspace"
+                    className="answer-workspace"
+                    hidden={!editorVisible}
+                  >
+                    {candidate && (
+                      <div className="notice candidate">
+                        <strong>Тестовая расшифровка</strong>
+                        <p>{active?.candidate}</p>
+                        <div className="actions">
+                          <button
+                            className="primary"
+                            onClick={() => {
+                              setEditingIndex(state.index);
+                              dispatch({ type: "apply-transcript" });
+                            }}
+                          >
+                            {active?.append
+                              ? "Добавить к ответу"
+                              : answer.text
+                                ? "Заменить ответ"
+                                : "Использовать текст"}
+                          </button>
+                          <button onClick={() => dispatch({ type: "cancel" })}>
+                            Оставить свой текст
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="editor-heading">
+                      <label htmlFor="answer">Ваш ответ</label>
+                      <span>
+                        {textLength(answer.text)} / {MAX_TEXT}
+                      </span>
+                    </div>
+                    <textarea
+                      id="answer"
+                      ref={editor}
+                      rows={4}
+                      value={answer.text}
+                      aria-describedby="answer-help answer-error"
+                      aria-invalid={textLength(answer.text) > MAX_TEXT}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "edit",
+                          index: state.index,
+                          text: event.target.value,
+                        })
+                      }
+                      placeholder="Напишите своими словами. Или начните с примера."
+                    />
+                    <p id="answer-error" className="error-text">
+                      {textLength(answer.text) > MAX_TEXT
+                        ? "Ответ длиннее 6000 символов. Сократите его, чтобы продолжить. Весь текст сохранён."
+                        : ""}
+                    </p>
+                    <div className="editor-tools" id="answer-help">
                       <button
                         className="text-button"
-                        onClick={() =>
-                          dispatch({ type: "undo", index: state.index })
-                        }
+                        disabled={!!active}
+                        onClick={() => replaceText(topic.sample)}
                       >
-                        Отменить изменения
+                        Вставить пример
                       </button>
-                    )}
-                  </div>
-                  {answer.evaluation && (
-                    <div className="evaluation">
-                      <strong>
-                        {present === answer.evaluation.items.length
-                          ? live
-                            ? "В ответе есть нужные сведения"
-                            : "В примере есть нужные сведения"
-                          : unknown
-                            ? "Неизвестное отмечено — можно продолжать"
-                            : live
-                              ? "В ответе не хватает конкретики"
-                              : "В примере не хватает конкретики"}
-                      </strong>
-                      <p>
-                        {live
-                          ? "Это оценка модели. Проверьте основания; ответ можно подтвердить с пробелами."
-                          : "Это заранее подготовленная оценка примера, а не ответ модели."}
-                      </p>
-                      {live && (
-                        <details>
-                          <summary>Основания оценки</summary>
-                          {answer.evaluation.items.map((item) => (
-                            <p key={item.slotId}>
-                              {item.reason}
-                              {item.evidence.map((quote, i) => (
-                                <q key={i}>{quote}</q>
-                              ))}
-                            </p>
-                          ))}
-                          {answer.evaluation.conflicts?.map((conflict, i) => (
-                            <div key={i}>
-                              <strong>Нужно уточнить противоречие</strong>
-                              {conflict.evidence.map((quote, j) => (
-                                <p key={j}>
-                                  <q>{quote}</q>
-                                </p>
-                              ))}
-                            </div>
-                          ))}
-                        </details>
-                      )}
-                      {answer.evaluation.followUp && (
-                        <>
-                          <p className="follow-up">
-                            {answer.evaluation.followUp}
-                          </p>
-                          <div className="actions">
-                            <button onClick={() => setSupplement("")}>
-                              Дополнить текстом
-                            </button>
-                            <button
-                              disabled={!!active}
-                              onClick={() => start("transcription", true)}
-                            >
-                              Дополнить тестовой записью
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {supplement !== null && (
-                    <div className="notice">
-                      <label htmlFor="supplement">Дополнение к ответу</label>
-                      <textarea
-                        id="supplement"
-                        value={supplement}
-                        onChange={(event) => setSupplement(event.target.value)}
-                      />
-                      <div className="actions">
-                        <button onClick={() => setSupplement(followUpAnswer)}>
-                          Вставить пример дополнения
-                        </button>
+                      <button
+                        className="text-button"
+                        disabled={!!active}
+                        onClick={() => replaceText(unknownAnswer)}
+                      >
+                        Пока не знаю
+                      </button>
+                      {answer.text && (
                         <button
-                          className="primary"
-                          disabled={!supplement.trim()}
-                          onClick={() => {
-                            dispatch({
-                              type: "edit",
-                              index: state.index,
-                              text: `${answer.text}\n${supplement}`,
-                            });
-                            setSupplement(null);
-                          }}
+                          className="text-button"
+                          onClick={() =>
+                            dispatch({ type: "undo", index: state.index })
+                          }
                         >
-                          Добавить к ответу
+                          Отменить изменения
                         </button>
-                        <button onClick={() => setSupplement(null)}>
-                          Отменить дополнение
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  )}
-                  <div className="question-actions">
-                    <button
-                      disabled={!validText(answer.text) || !!active}
-                      onClick={() => start("evaluation")}
-                    >
-                      Проверить ответ
-                    </button>
-                    <button
-                      className="primary"
-                      disabled={!validText(answer.text) || !!active}
-                      onClick={() => dispatch({ type: "confirm" })}
-                    >
-                      {answer.evaluation
-                        ? "Подтвердить и далее"
-                        : "Подтвердить без проверки"}
-                      <Icon name="arrow" />
-                    </button>
+                    {!answer.evaluation && (
+                      <p className="coverage-count">
+                        Полнота ответа ещё не проверена
+                      </p>
+                    )}
+                    {answer.evaluation && (
+                      <div className="evaluation">
+                        <strong>
+                          {present === answer.evaluation.items.length
+                            ? live
+                              ? "В ответе есть нужные сведения"
+                              : "В примере есть нужные сведения"
+                            : unknown
+                              ? "Неизвестное отмечено — можно продолжать"
+                              : live
+                                ? "В ответе не хватает конкретики"
+                                : "В примере не хватает конкретики"}
+                        </strong>
+                        <p className="coverage-count">
+                          Есть сведения: {present} из{" "}
+                          {answer.evaluation.items.length}; явно неизвестно:{" "}
+                          {unknown}
+                        </p>
+                        <p>
+                          {live
+                            ? "Это оценка модели. Проверьте основания; ответ можно подтвердить с пробелами."
+                            : "Это заранее подготовленная оценка примера, а не ответ модели."}
+                        </p>
+                        {live && (
+                          <details>
+                            <summary>Основания оценки</summary>
+                            {answer.evaluation.items.map((item) => (
+                              <p key={item.slotId}>
+                                {item.reason}
+                                {item.evidence.map((quote, i) => (
+                                  <q key={i}>{quote}</q>
+                                ))}
+                              </p>
+                            ))}
+                            {answer.evaluation.conflicts?.map((conflict, i) => (
+                              <div key={i}>
+                                <strong>Нужно уточнить противоречие</strong>
+                                {conflict.evidence.map((quote, j) => (
+                                  <p key={j}>
+                                    <q>{quote}</q>
+                                  </p>
+                                ))}
+                              </div>
+                            ))}
+                          </details>
+                        )}
+                        {answer.evaluation.followUp && (
+                          <>
+                            <p className="follow-up">
+                              {answer.evaluation.followUp}
+                            </p>
+                            <div className="actions">
+                              <button onClick={() => setSupplement("")}>
+                                Дополнить текстом
+                              </button>
+                              <button
+                                disabled={!!active}
+                                onClick={() => start("transcription", true)}
+                              >
+                                Дополнить тестовой записью
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {supplement !== null && (
+                      <div className="notice">
+                        <label htmlFor="supplement">Дополнение к ответу</label>
+                        <textarea
+                          id="supplement"
+                          value={supplement}
+                          onChange={(event) =>
+                            setSupplement(event.target.value)
+                          }
+                        />
+                        <div className="actions">
+                          <button onClick={() => setSupplement(followUpAnswer)}>
+                            Вставить пример дополнения
+                          </button>
+                          <button
+                            className="primary"
+                            disabled={!supplement.trim()}
+                            onClick={() => {
+                              dispatch({
+                                type: "edit",
+                                index: state.index,
+                                text: `${answer.text}\n${supplement}`,
+                              });
+                              setSupplement(null);
+                            }}
+                          >
+                            Добавить к ответу
+                          </button>
+                          <button onClick={() => setSupplement(null)}>
+                            Отменить дополнение
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="question-actions">
+                      <button
+                        disabled={!validText(answer.text) || !!active}
+                        onClick={() => start("evaluation")}
+                      >
+                        Проверить ответ
+                      </button>
+                      <button
+                        className="primary"
+                        disabled={!validText(answer.text) || !!active}
+                        onClick={() => dispatch({ type: "confirm" })}
+                      >
+                        {answer.evaluation
+                          ? "Подтвердить и далее"
+                          : "Подтвердить без проверки"}
+                        <Icon name="arrow" />
+                      </button>
+                    </div>
                   </div>
                 </section>
               )}
@@ -720,6 +711,19 @@ export function App() {
                     Исправьте детали или заберите сводку. Она доступна и без
                     создания вакансии.
                   </p>
+                  <div className="review-progress">
+                    <ProgressRing
+                      completed={confirmed}
+                      initialCompleted={previousConfirmed}
+                      compact
+                    >
+                      <strong>
+                        {confirmed}
+                        <span> / 4</span>
+                      </strong>
+                    </ProgressRing>
+                    <p>Подтверждено {confirmed} из 4 тем</p>
+                  </div>
                   {state.answers.map((a, index) => (
                     <article className="answer-card" key={topics[index].id}>
                       <div>
@@ -991,11 +995,6 @@ export function App() {
           </div>
         )}
       </main>
-      <footer className="site-footer">
-        <span>VOICE VACANCY</span>
-        <span>Хорошая вакансия начинается с понятной работы.</span>
-        <span>Прототип · 2026</span>
-      </footer>
       {modal && (
         <ConfirmDialog
           title={modal.title}
