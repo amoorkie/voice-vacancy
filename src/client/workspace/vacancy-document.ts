@@ -6,55 +6,51 @@ import {
 } from "../../contracts/interview";
 import { resultStale, type Result, type Session } from "../../domain/session";
 
-/** Сохраняет порядок исходных фраз и принимает обычные маркеры списка при ручной правке. */
-function lines(text: string) {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-/** Первая короткая строка с названием становится заголовком. Условия без названия остаются в основном тексте. */
+/** Разбирает шесть разделов для прямого ввода. Пустая первая строка оставляет название незаполненным. */
 export function vacancyDocument(result: Result) {
   const current = (id: SectionId) =>
     result.edits[id] ?? result.generated.sections[id];
-  const role = current("role").trim();
-  const roleLines = lines(role);
+  const role = current("role").split(/\r?\n/);
   const firstClaim = result.generated.claims?.role?.[0];
   const named =
     result.edits.role !== undefined ||
     (result.generated.origin === "ai"
       ? firstClaim?.id === "role-title" && firstClaim.kind === "fact"
       : !!result.generated.sources.role?.length);
-  const title = named && roleLines.length ? roleLines[0] : "Вакансия";
-  const intro = named ? roleLines.slice(1) : roleLines;
+  const title = named ? (role.shift() ?? "") : "";
+  const conditions = role.join("\n");
   const sections = sectionIds
     .filter((id) => id !== "role")
     .map((id) => {
       const list = id === "tasks" || id === "skills" || id === "clarifications";
-      const body = lines(current(id)).map((line) =>
-        list ? line.replace(/^[-•*]\s+/u, "") : line,
-      );
+      let body = current(id);
+      if (list && result.edits[id] === undefined)
+        body = body.replace(/^[•*-][ \t]+/gm, "");
       return { id, title: sectionNames[id], list, body };
     });
-  return { title, intro, sections };
+  return { title, conditions, sections };
 }
 
 /** Выгружает ту же редакцию и маркирует устаревшие источники и ручные изменения. */
 export function vacancyDocumentText(state: Session) {
   if (!state.result) return "";
   const doc = vacancyDocument(state.result);
-  const blocks = [
-    doc.title,
-    ...doc.intro,
-    ...doc.sections
-      .filter((s) => s.body.length)
-      .map((s) =>
-        [s.title, ...s.body.map((text) => (s.list ? "• " + text : text))].join(
-          "\n",
-        ),
-      ),
-  ];
+  const blocks = [doc.title.trim() || "Вакансия", doc.conditions.trim()].filter(
+    Boolean,
+  );
+  for (const section of doc.sections) {
+    const rows = section.body
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (rows.length)
+      blocks.push(
+        [
+          section.title,
+          ...rows.map((line) => (section.list ? "• " + line : line)),
+        ].join("\n"),
+      );
+  }
   if (resultStale(state))
     blocks.push("Устаревший черновик: ответы изменились.");
   const changed = sectionIds.filter(

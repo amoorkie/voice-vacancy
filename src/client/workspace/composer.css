@@ -158,7 +158,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 .ix-voice > span,
 .ix-question p,
 .ix-answer-row span,
-.ix-section details,
 .ix-demo-options,
 .ix-notice p {
   color: #5b6066;
@@ -356,25 +355,13 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 .ix-answer-row:hover {
   background: #fafafa;
 }
-.ix-answer-row span,
-.ix-section blockquote {
+.ix-answer-row span {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.ix-section {
-  padding: 0 0 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #e6e7e6;
-}
-.ix-section details,
 .ix-demo-options {
   margin-top: 8px;
   font-size: 12px;
-}
-.ix-section blockquote {
-  margin: 6px 0;
-  padding: 6px 10px;
-  border-left: 2px solid #c7cdd3;
 }
 .ix-demo-options {
   margin-top: 18px;
@@ -503,17 +490,89 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   width: 100%;
   text-align: left;
 }
+/* Шапка берёт тёмный фон, медное свечение и четырёхлучевую искру с присланного референса. */
 .ix-document {
   color: #202527;
-  max-width: 66ch;
-  margin: 8px auto 28px;
+  max-width: 70ch;
+  margin: 0 auto 28px;
   overflow-wrap: anywhere;
 }
-.ix-document h3 {
+.ix-edit-hint {
+  display: block;
+  margin-top: 3px;
+  color: #666b70;
+  font-size: 12px;
+}
+.ix-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 22px 24px 17px;
+  min-height: 155px;
+  color: #fffaf3;
+  background-color: #17130f;
+  background-image:
+    linear-gradient(
+      95deg,
+      rgb(13 12 13 / 88%) 4%,
+      rgb(19 14 12 / 70%) 45%,
+      transparent 90%
+    ),
+    radial-gradient(
+      ellipse at 84% 125%,
+      #ffa12a 0%,
+      #e95f07 20%,
+      #853807 39%,
+      transparent 68%
+    ),
+    radial-gradient(ellipse at 88% 0%, #583013 0%, #181411 62%);
+}
+.ix-cover::after {
+  content: "✦";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  right: -0.05em;
+  bottom: -0.33em;
+  color: rgb(65 19 5 / 22%);
+  font:
+    190px/1 Georgia,
+    serif;
+}
+.ix-cover-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff2de;
+  font-size: 12px;
+  font-weight: 550;
+}
+.ix-cover-brand span {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid #b99e775e;
+  border-radius: 6px;
+  font:
+    18px/1 Georgia,
+    serif;
+}
+.ix-cover h3 {
+  margin: 19px 0 4px;
   font-size: clamp(25px, 3vw, 36px);
-  letter-spacing: -0.055em;
-  line-height: 1.12;
-  margin-bottom: 12px;
+  line-height: 1.13;
+  font-weight: 650;
+  letter-spacing: -0.05em;
+}
+.ix-document section {
+  margin: 22px 0 0;
+}
+.ix-section-title {
+  position: relative;
+  padding-right: 34px;
+  margin-bottom: 6px;
 }
 .ix-document h4,
 .ix-sources h4 {
@@ -521,20 +580,19 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   font-weight: 650;
   line-height: 1.3;
   letter-spacing: -0.025em;
-  margin: 0 0 8px;
+  margin: 0;
 }
-.ix-document section {
-  margin: 24px 0 0;
+.ix-undo {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  color: #596268;
 }
-.ix-document p,
-.ix-document li {
-  font-size: 15px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-.ix-document p + p,
-.ix-document li + li {
-  margin-top: 5px;
+.ix-cover .ix-undo {
+  top: 14px;
+  right: 15px;
+  color: white;
+  background: rgb(0 0 0 / 38%);
 }
 .ix-document ul {
   list-style: disc;
@@ -544,9 +602,75 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 .ix-document li::marker {
   color: #838983;
 }
+.ix-document li + li {
+  margin-top: 2px;
+}
 .ix-document [data-section="clarifications"] {
   border-top: 1px solid #dedfdd;
   padding-top: 17px;
+}
+
+/* Нативные поля растут вместе с текстом. В покое они образуют заголовок, абзацы и обычный список. */
+.ix-document textarea.ix-inline-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1lh;
+  max-width: 100%;
+  field-sizing: content;
+  resize: none;
+  overflow: auto;
+  cursor: text;
+  padding: 0 2px;
+  margin-left: -2px;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 3px;
+  box-shadow: none;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: inherit;
+}
+.ix-document textarea.ix-role-title {
+  font: inherit;
+  letter-spacing: inherit;
+}
+.ix-document textarea.ix-role-conditions {
+  font-size: 14px;
+  color: #fff9ee;
+}
+.ix-document textarea::placeholder {
+  color: #687075;
+  opacity: 1;
+}
+.ix-cover textarea::placeholder {
+  color: #f8e5d1;
+}
+.ix-document textarea:hover {
+  background: rgb(91 100 109 / 6%);
+}
+.ix-document textarea:focus {
+  outline: 2px solid #8b582b;
+  outline-offset: 3px;
+  background: #fbf8f3;
+}
+.ix-cover textarea:hover,
+.ix-cover textarea:focus {
+  background: rgb(8 6 5 / 42%);
+}
+.ix-cover textarea:focus {
+  outline-color: #ffca90;
+}
+@media (max-width: 639px) {
+  .ix-cover {
+    padding: 17px 18px 13px;
+    min-height: 140px;
+  }
+  .ix-cover h3 {
+    margin-top: 17px;
+  }
 }
 .ix-sources {
   color: #555d60;

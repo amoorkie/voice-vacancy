@@ -59,22 +59,27 @@ test("четыре подтверждения, неподвижное интер
   await expect(ring).toHaveAttribute("aria-valuenow", "4");
   await create.focus();
   const forward = await measure(create);
-  const role = page.getByLabel("Роль и известные условия");
+  const role = page.getByRole("textbox", {
+    name: "Название вакансии",
+    exact: true,
+  });
   const article = page.getByRole("article");
   await expect(
     article.getByRole("heading", { name: "Frontend-разработчик" }),
   ).toBeVisible();
   await expect(article.getByRole("listitem").first()).toBeVisible();
-  await expect(page.locator(".ix-preview textarea")).toHaveCount(0);
+  await expect(role).toBeEditable();
+  await expect(
+    article.getByRole("textbox", { name: "Условия работы" }),
+  ).toBeEditable();
   expect(
     await page
       .locator(".ix-preview")
       .evaluate((n) => getComputedStyle(n).borderRadius),
   ).toBe("24px 0px 0px 24px");
-  await page
-    .getByRole("button", { name: "Редактировать", exact: true })
-    .click();
-  await expect(page.locator(".ix-preview textarea")).toHaveCount(6);
+  await expect(page.getByRole("button", { name: "Редактировать" })).toHaveCount(
+    0,
+  );
   expect(forward[0].left - forward.at(-1)!.left).toBe(720);
   expect(
     forward.some(
@@ -82,7 +87,6 @@ test("четыре подтверждения, неподвижное интер
     ),
   ).toBe(true);
   await role.fill("Моя редакция роли");
-  await page.getByRole("button", { name: "Готово", exact: true }).click();
   await expect(
     article.getByRole("heading", { name: "Моя редакция роли" }),
   ).toBeVisible();
@@ -131,9 +135,9 @@ test("четыре подтверждения, неподвижное интер
   await expect(
     article.getByRole("heading", { name: /Frontend/ }),
   ).toBeVisible();
-  await expect(article.locator('[data-section="first-half"]')).toContainText(
-    unknownAnswer,
-  );
+  await expect(
+    article.getByRole("textbox", { name: "Первые шесть месяцев", exact: true }),
+  ).toHaveValue(unknownAnswer);
 });
 
 test("запись и ручные правки сохраняются отдельно от подтверждения и прогресса", async ({
@@ -215,8 +219,11 @@ test("на телефоне активна одна панель, Escape воз�
       for (let i = 0; i < 4; i++) await confirm(page);
       await page.getByRole("button", { name: "Создать черновик" }).click();
       await expect(
-        page.getByRole("article").getByRole("listitem").first(),
-      ).toContainText("Разрабатывать формы");
+        page.getByRole("textbox", {
+          name: "Ежедневные задачи, пункт 1",
+          exact: true,
+        }),
+      ).toHaveValue(/Разрабатывать формы/);
       await expect(page.getByRole("progressbar")).toHaveCount(0);
     }
     expect(
@@ -260,8 +267,11 @@ test("двойное нажатие открывает одно превью, п
   ).toHaveCount(0);
   await create.click();
   await expect(
-    page.getByRole("article").getByRole("listitem").first(),
-  ).toContainText("Разрабатывать формы");
+    page.getByRole("textbox", {
+      name: "Ежедневные задачи, пункт 1",
+      exact: true,
+    }),
+  ).toHaveValue(/Разрабатывать формы/);
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Открыть черновик" }).click();
@@ -269,8 +279,11 @@ test("двойное нажатие открывает одно превью, п
     page.getByRole("button", { name: "Отменить сборку" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("article").getByRole("listitem").first(),
-  ).toContainText("Разрабатывать формы");
+    page.getByRole("textbox", {
+      name: "Ежедневные задачи, пункт 1",
+      exact: true,
+    }),
+  ).toHaveValue(/Разрабатывать формы/);
 });
 
 test("первая запись останавливается и подтверждается одной круглой кнопкой", async ({
@@ -302,4 +315,60 @@ test("первая запись останавливается и подтвер
     .poll(() => ticks.last().evaluate((n) => getComputedStyle(n).transform))
     .toContain("2.95");
   await expect(button).toHaveAccessibleName("Начать запись");
+});
+
+test("правлю статью сразу, разделяю и объединяю пункты, передаю текущую редакцию", async ({
+  page,
+  context,
+}) => {
+  await enter(page);
+  for (let i = 0; i < 4; i++) await confirm(page);
+  await page.getByRole("button", { name: "Создать черновик" }).click();
+  const article = page.getByRole("article");
+  const field = (name: string) =>
+    article.getByRole("textbox", { name, exact: true });
+  const title = field("Название вакансии"),
+    conditions = field("Условия работы");
+  await title.fill("");
+  await conditions.fill("Удалённая работа");
+  await expect(title).toHaveValue("");
+  await expect(conditions).toHaveValue("Удалённая работа");
+  await title.fill("Разработчик кабинета");
+  const item = (n: number) => field("Ежедневные задачи, пункт " + n);
+  await item(1).fill("Писать тесты");
+  await item(1).press("End");
+  await item(1).press("Enter");
+  await expect(item(2)).toBeFocused();
+  await page.keyboard.insertText("Проверять формы");
+  await expect(item(2)).toHaveValue("Проверять формы");
+  await item(2).press("Home");
+  await item(2).press("Backspace");
+  await expect(item(1)).toHaveValue("Писать тестыПроверять формы");
+  await expect(item(1)).toBeFocused();
+  await item(1).press("Enter");
+  await expect(item(2)).toHaveValue("Проверять формы");
+  await item(2).fill("Исправлять формы\nРазбирать обращения");
+  await expect(item(3)).toHaveValue("Разбирать обращения");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Копировать", exact: true }).click();
+  // Системный буфер Windows использует CRLF. Формат строк проверяем одинаково на всех платформах.
+  const text = (
+    await page.evaluate(() => navigator.clipboard.readText())
+  ).replace(/\r\n/g, "\n");
+  expect(text).toContain("Разработчик кабинета\n\nУдалённая работа");
+  expect(text).toContain(
+    "• Писать тесты\n• Исправлять формы\n• Разбирать обращения",
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Открыть черновик" }).click();
+  await expect(conditions).toHaveValue("Удалённая работа");
+  await expect(item(3)).toHaveValue("Разбирать обращения");
+  await page
+    .getByRole("button", {
+      name: "Вернуть исходный текст: Ежедневные задачи",
+      exact: true,
+    })
+    .click();
+  await expect(item(1)).toHaveValue(/Разрабатывать формы/);
+  await expect(title).toHaveValue("Разработчик кабинета");
 });
