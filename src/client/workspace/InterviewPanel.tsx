@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { Check, FileText, Mic, Square, X } from "lucide-react";
+import { AudioLines, Check, FileText, Mic, Square, X } from "lucide-react";
 import { ProgressRing } from "../ProgressRing";
 import { topics, unknownAnswer } from "../../domain/fixtures";
 import { MAX_TEXT, validText, textLength } from "../../contracts/interview";
@@ -17,79 +17,128 @@ function answerStatus(answer: Answer) {
   return answer.text ? "Есть ответ" : "Без ответа";
 }
 
-/** Редактор сохраняет правки; Enter завершает тему, Shift+Enter оставляет перенос строки. */
-function TranscriptEditor({ session }: { session: InterviewSession }) {
+/** Показывает настоящее ожидание ASR без выдуманных слов и процентов. */
+function TranscriptionPending({ cancel }: { cancel: () => void }) {
+  return (
+    <div className="ix-transcription" role="status">
+      <div className="ix-transcription-top">
+        <div className="ix-transcription-caption">
+          <span className="ix-transcription-wave" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>Распознаю речь</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={cancel}>
+          Отменить
+        </Button>
+      </div>
+      <div className="ix-transcription-lines" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
+  );
+}
+
+/** Оставляет полученный текст в поле своей темы даже после автоматического перехода дальше. */
+function TranscriptEditor({
+  session,
+  index,
+}: {
+  session: InterviewSession;
+  index: number;
+}) {
   const { state, dispatch } = session;
-  const { index, active } = state;
+  const current = index === state.index;
   const answer = state.answers[index];
+  const pending =
+    current &&
+    state.active?.kind === "transcription" &&
+    state.active.phase === "waiting";
+  const fieldId = current ? "ix-answer" : "ix-answer-" + index;
   const change = (text: string) => dispatch({ type: "edit", index, text });
   return (
-    <div className="ix-editor">
+    <div className="ix-editor" data-current={current}>
       <div className="ix-label">
         <div>
-          <label htmlFor="ix-answer">Расшифровка</label>
+          {pending && !answer.text ? (
+            <span className="ix-transcript-label">Расшифровка</span>
+          ) : (
+            <label htmlFor={fieldId}>
+              {current ? "Расшифровка" : topics[index].short}
+            </label>
+          )}
           {(answer.text || answer.confirmedText !== null) && (
             <small className="ix-answer-status">{answerStatus(answer)}</small>
           )}
         </div>
       </div>
-      <Textarea
-        id="ix-answer"
-        value={answer.text}
-        onChange={(event) => change(event.target.value)}
-        onKeyDown={(event) => {
-          if (
-            event.key !== "Enter" ||
-            event.shiftKey ||
-            event.nativeEvent.isComposing
-          )
-            return;
-          event.preventDefault();
-          if (!active) dispatch({ type: "confirm" });
-        }}
-        placeholder="Напишите ответ и нажмите Enter. Новая строка — Shift+Enter."
-        aria-invalid={textLength(answer.text) > MAX_TEXT}
-      />
+      {(!pending || answer.text) && (
+        <Textarea
+          id={fieldId}
+          value={answer.text}
+          aria-busy={pending}
+          readOnly={pending || (!current && !!state.active)}
+          onChange={(event) => change(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key !== "Enter" ||
+              event.shiftKey ||
+              event.nativeEvent.isComposing
+            )
+              return;
+            event.preventDefault();
+            if (!state.active) {
+              // Enter в прежнем поле завершает именно его версию, не пустой ответ следующей темы.
+              if (!current) dispatch({ type: "navigate", index });
+              dispatch({ type: "confirm" });
+            }
+          }}
+          placeholder="Напишите ответ и нажмите Enter. Новая строка — Shift+Enter."
+          aria-invalid={textLength(answer.text) > MAX_TEXT}
+        />
+      )}
+      {pending && (
+        <TranscriptionPending cancel={() => dispatch({ type: "cancel" })} />
+      )}
       {textLength(answer.text) > MAX_TEXT && (
         <p role="alert">
           Сократите ответ до {MAX_TEXT} символов. Сейчас{" "}
           {textLength(answer.text)}.
         </p>
       )}
-      <div className="ix-actions">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!!active}
-          onClick={() => {
-            change(unknownAnswer);
-            dispatch({ type: "confirm" });
-          }}
-        >
-          Пока не знаю
-        </Button>
-        {answer.confirmedText !== null && !answer.confirmed && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => dispatch({ type: "undo", index })}
-          >
-            Отменить правку
-          </Button>
+      {!pending &&
+        (current || (answer.confirmedText !== null && !answer.confirmed)) && (
+          <div className="ix-actions">
+            {current && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!!state.active}
+                onClick={() => {
+                  change(unknownAnswer);
+                  dispatch({ type: "confirm" });
+                }}
+              >
+                Пока не знаю
+              </Button>
+            )}
+            {answer.confirmedText !== null && !answer.confirmed && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => dispatch({ type: "undo", index })}
+              >
+                Отменить правку
+              </Button>
+            )}
+          </div>
         )}
-      </div>
-      {active?.phase === "waiting" && (
-        <p role="status">
-          Готовлю расшифровку…{" "}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => dispatch({ type: "cancel" })}
-          >
-            Отменить
-          </Button>
-        </p>
-      )}
     </div>
   );
 }
@@ -128,7 +177,7 @@ export function InterviewPanel({
     : recording
       ? "Остановить запись"
       : pending
-        ? "Обработка ответа…"
+        ? "Распознаю речь…"
         : hasAnswer
           ? "Дополнить запись"
           : "Начать запись";
@@ -184,13 +233,21 @@ export function InterviewPanel({
               aria-label={voiceLabel}
               onClick={mainAction}
             >
-              {review ? <FileText /> : recording ? <Square /> : <Mic />}
+              {review ? (
+                <FileText />
+              ) : recording ? (
+                <Square />
+              ) : pending ? (
+                <AudioLines />
+              ) : (
+                <Mic />
+              )}
             </button>
           </ProgressRing>
           <label
             className="ix-action-label"
             htmlFor="ix-main-action"
-            aria-live="polite"
+            aria-live={pending ? "off" : "polite"}
           >
             {voiceLabel}
           </label>
@@ -254,9 +311,17 @@ export function InterviewPanel({
             ))}
           </section>
         ) : (
-          <>
-            <TranscriptEditor session={session} />
-          </>
+          <section className="ix-transcripts" aria-label="Ответы по темам">
+            {answers.map((answer, i) =>
+              i === index || answer.text || answer.confirmedText !== null ? (
+                <TranscriptEditor
+                  key={topics[i].id}
+                  session={session}
+                  index={i}
+                />
+              ) : null,
+            )}
+          </section>
         )}
         {!previewActive && state.message && (
           <p className="ix-feedback" role="status">
