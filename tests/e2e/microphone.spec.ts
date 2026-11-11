@@ -10,6 +10,8 @@ for (const silent of [true, false]) {
       ? "тишина не создаёт ответ и не двигает прогресс"
       : "микрофон отправляет WAV, текст приходит от распознавателя",
     async ({ baseURL }, info) => {
+      // Холодный запуск отдельного браузера с аудиоустройством в CI требует большего общего срока.
+      test.setTimeout(60000);
       const file = info.outputPath("microphone.wav");
       await mkdir(dirname(file), { recursive: true });
       const pcm = Float32Array.from({ length: 16000 * 3 }, (_, index) =>
