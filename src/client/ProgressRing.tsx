@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 const SEGMENTS = 60;
 
-/** Плавно окрашивает сегменты по часовой стрелке; значение остаётся доступно без анимации. */
+/** Показывает подтверждённый прогресс и передаёт громкость микрофона бегущей волне делений. */
 export function ProgressRing({
   completed,
   total = 4,
@@ -12,6 +12,7 @@ export function ProgressRing({
   compact = false,
   scan = false,
   initialCompleted = completed,
+  voiceLevel = 0,
 }: {
   completed: number;
   total?: number;
@@ -20,6 +21,7 @@ export function ProgressRing({
   compact?: boolean;
   scan?: boolean;
   initialCompleted?: number;
+  voiceLevel?: number;
 }) {
   const [shown, setShown] = useState(initialCompleted);
   const count = Math.round(
@@ -41,6 +43,11 @@ export function ProgressRing({
 
   return (
     <div
+      style={
+        {
+          "--voice-level": recording ? Math.max(0, Math.min(1, voiceLevel)) : 0,
+        } as CSSProperties
+      }
       className={`progress-orbit ${recording ? "is-recording" : ""} ${compact ? "compact" : ""}`}
     >
       <svg

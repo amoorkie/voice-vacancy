@@ -84,6 +84,12 @@ test("четыре подтверждения, неподвижное интер
     await confirm(page);
   }
   await page.getByLabel("Расшифровка").fill(workspaceSamples[3]);
+  await expect(page.locator(".ix-topic-check")).toHaveCount(4);
+  await expect(ring).toHaveAttribute("aria-valuenow", "3");
+  await page.getByLabel("Расшифровка").fill("");
+  await expect(page.locator(".ix-topic-check")).toHaveCount(3);
+  await expect(page.locator(".ix-topic-dot")).toHaveCount(1);
+  await page.getByLabel("Расшифровка").fill(workspaceSamples[3]);
   const forward = await measure(
     page.getByRole("button", { name: "Подтвердить ответ" }),
   );
