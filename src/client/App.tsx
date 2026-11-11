@@ -106,8 +106,18 @@ function ConfirmDialog({
 }
 
 /** Соединяет доменные события с UI; тестовый адаптер запускается только для активной попытки. */
-export function App() {
-  const [runtime, setRuntime] = useState<RuntimeConfig>();
+export function App({
+  demo = false,
+  onExit,
+  onConnect,
+}: {
+  demo?: boolean;
+  onExit?: () => void;
+  onConnect?: () => void;
+}) {
+  const [runtime, setRuntime] = useState<RuntimeConfig | undefined>(() =>
+    demo ? { mode: "fixtures", csrfToken: "", model: null } : undefined,
+  );
   const live = runtime?.mode === "api";
   const [state, dispatch] = useReducer(sessionReducer, undefined, () =>
     initialSession(),
@@ -159,6 +169,7 @@ export function App() {
   }, [editingIndex, state.index]);
 
   useEffect(() => {
+    if (demo) return;
     const controller = new AbortController();
     void fetch("/api/config", { signal: controller.signal })
       .then(async (response) => {
@@ -176,7 +187,7 @@ export function App() {
           setRuntime({ mode: "unavailable", csrfToken: "", model: null });
       });
     return () => controller.abort();
-  }, []);
+  }, [demo]);
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -292,16 +303,36 @@ export function App() {
     else dispatch({ type: "review" });
   }
 
+  /** Сеанс уничтожается при выходе в кабинет, поэтому сначала защищаю уже собранный текст. */
+  function leave(destination: () => void) {
+    if (active || state.result || state.answers.some((a) => a.text.trim())) {
+      setModal({
+        title: "Выйти из интервью?",
+        text: "Ответы и правки в этой вкладке будут удалены. Можно остаться и скачать текст.",
+        run: destination,
+      });
+    } else destination();
+  }
+
   return (
     <div className="app-shell">
       <header className="site-header">
-        <a
-          className="brand"
-          href="#main"
-          aria-label="Voice Vacancy, перейти к содержимому"
-        >
-          voice vacancy
-        </a>
+        {onExit ? (
+          <button
+            className="text-button workspace-return"
+            onClick={() => leave(onExit)}
+          >
+            <Icon name="back" />В кабинет
+          </button>
+        ) : (
+          <a
+            className="brand"
+            href="#main"
+            aria-label="Voice Vacancy, перейти к содержимому"
+          >
+            voice vacancy
+          </a>
+        )}
         <span className="header-purpose">Создание вакансии</span>
         {state.stage !== "intro" && (
           <button className="text-button finish-button" onClick={review}>
@@ -337,6 +368,16 @@ export function App() {
             >
               Начать интервью <Icon name="arrow" />
             </button>
+            {onConnect && (
+              <div>
+                <button
+                  className="text-button"
+                  onClick={() => leave(onConnect)}
+                >
+                  Подключить существующую
+                </button>
+              </div>
+            )}
             <p className="intro-note">
               Можно отвечать текстом. Если чего-то не знаете — так и напишите.
             </p>

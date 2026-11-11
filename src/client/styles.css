@@ -13,11 +13,13 @@
 * {
   box-sizing: border-box;
 }
-body {
-  margin: 0;
+body { margin: 0; }
+body:has(.app-shell) {
   background: #fafafe url("/assets/interview-ambient.png") center top / cover
     fixed no-repeat;
 }
+/* Стили интервью действуют только на самостоятельный экран и его диалоги. */
+@scope (.app-shell) {
 button,
 textarea,
 select {
@@ -925,4 +927,5 @@ dialog .actions {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
 }

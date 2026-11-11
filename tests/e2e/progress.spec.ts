@@ -4,6 +4,11 @@ import { expect, test, type Page } from "@playwright/test";
 /** Начинает интервью и оставляет первый вопрос в выбранном голосовом состоянии. */
 async function begin(page: Page) {
   await page.goto("/");
+  if (
+    !(await page.getByRole("button", { name: "Добавить вакансию" }).isVisible())
+  )
+    await page.getByRole("button", { name: "Открыть список вакансий" }).click();
+  await page.getByRole("button", { name: "Добавить вакансию" }).click();
   await page.getByRole("button", { name: "Начать интервью" }).click();
 }
 
