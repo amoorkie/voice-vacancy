@@ -32,4 +32,13 @@
 
 ## Ограничения показа
 
-Запись и расшифровка работают на локальном примере. Генерация обращается к моему API. Ответы не сохраняются между перезагрузками вкладки. Общий лимит API задаю через AI_MAX_CALLS, расход не обнуляется при смене релиза.
+Запись работает с настоящим микрофоном, расшифровка выполняется на сервере. Генерация обращается к моему API. Ответы не сохраняются между перезагрузками вкладки. Общий лимит API задаю через AI_MAX_CALLS, расход не обнуляется при смене релиза.
+
+
+## Настоящий голос
+
+В `/opt/voice-vacancy/asr-venv` установлено отдельное Python-окружение по [asr-requirements.txt](../../deploy/portfolio/asr-requirements.txt). Модель base скачана в `/opt/voice-vacancy/asr-models`. Дистрибутив и документация — [faster-whisper](https://github.com/SYSTRAN/faster-whisper), лицензия MIT. Модель и окружение остаются на сервере между релизами.
+
+В env сервиса задаю `ASR_ENABLED=true`, `ASR_PYTHON=/opt/voice-vacancy/asr-venv/bin/python`, `ASR_MODEL_PATH=/opt/voice-vacancy/asr-models/base`. Worker [transcribe.py](../../deploy/portfolio/transcribe.py) включён в каждый релиз. Python получает WAV в stdin и возвращает JSON. CPU ограничен одним потоком, приоритет сервиса понижен относительно портфолио. Запросы распознавания не расходуют платный лимит DeepSeek.
+
+Проверяю, что `/api/config` сообщает `voice=microphone`, документ разрешает `microphone=(self)`, Nginx допускает тело до 6 МБ и использует `proxy_request_buffering off`. Для проверки использую синтетическую русскую фразу и тишину.

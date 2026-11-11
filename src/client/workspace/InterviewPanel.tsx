@@ -1,5 +1,5 @@
 // Интервью и обзор используют один сеанс и остаются в правой панели при открытии превью.
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -170,6 +170,7 @@ export function InterviewPanel({
               id="ix-main-action"
               className="ix-glass"
               data-complete={count === 4}
+              style={{ "--voice-level": session.voiceLevel } as CSSProperties}
               type="button"
               aria-disabled={
                 previewActive ||

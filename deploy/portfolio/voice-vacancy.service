@@ -10,10 +10,13 @@ User=voice-vacancy
 Group=voice-vacancy
 WorkingDirectory=/var/www/voice-vacancy/current
 Environment=NODE_ENV=production
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OMP_NUM_THREADS=1
 EnvironmentFile=/etc/voice-vacancy/app.env
 ExecStart=/opt/voice-vacancy/node-v26.13.0-linux-x64/bin/node dist/server/server/main.js
 Restart=on-failure
 RestartSec=3
+Nice=5
 TimeoutStopSec=20
 StateDirectory=voice-vacancy
 StateDirectoryMode=0750
