@@ -257,3 +257,111 @@ describe("честность тестовых данных", () => {
     ).toThrow();
   });
 });
+
+describe("автоматические расшифровки кабинета", () => {
+  test("четыре ответа атомарно закрывают темы и переводят сеанс к черновику", () => {
+    let state = reduce(initialSession("auto"), { type: "begin" });
+    for (let i = 0; i < 4; i++) {
+      state = reduce(state, {
+        type: "start",
+        kind: "transcription",
+        id: "voice-" + i,
+      });
+      state = reduce(state, {
+        type: "transcript",
+        id: "voice-" + i,
+        text: topics[i].sample,
+        autoAdvance: true,
+      });
+      expect(state.active).toBeUndefined();
+      expect(state.answers.filter((a) => a.confirmed)).toHaveLength(i + 1);
+      expect(state.answers[i].confirmedText).toBe(topics[i].sample);
+      expect(state.index).toBe(Math.min(i + 1, 3));
+    }
+    expect(state.stage).toBe("review");
+  });
+  test("повторная запись добавляет текст без потери ручной правки", () => {
+    let state = reduce(initialSession("auto"), {
+      type: "edit",
+      index: 0,
+      text: "Мой термин",
+    });
+    state = reduce(state, {
+      type: "start",
+      kind: "transcription",
+      id: "voice",
+      append: true,
+    });
+    state = reduce(state, {
+      type: "transcript",
+      id: "voice",
+      text: "Новые слова",
+      autoAdvance: true,
+    });
+    expect(state.answers[0].text).toBe("Мой термин\nНовые слова");
+    expect(state.answers[0].confirmed).toBe(true);
+    expect(state.index).toBe(1);
+  });
+  test("пустая расшифровка не засчитывает уже введённый текст", () => {
+    let state = reduce(initialSession("auto"), {
+      type: "edit",
+      index: 0,
+      text: "Моя правка",
+    });
+    state = reduce(state, {
+      type: "start",
+      kind: "transcription",
+      id: "voice",
+      append: true,
+    });
+    state = reduce(state, {
+      type: "transcript",
+      id: "voice",
+      text: "   ",
+      autoAdvance: true,
+    });
+    expect(state.answers[0].text).toBe("Моя правка");
+    expect(state.answers[0].confirmed).toBe(false);
+    expect(state.index).toBe(0);
+    expect(state.active).toBeUndefined();
+  });
+  test("поздний результат отменённой записи не закрывает тему", () => {
+    let state = reduce(initialSession("auto"), {
+      type: "start",
+      kind: "transcription",
+      id: "voice",
+    });
+    state = reduce(state, { type: "cancel" });
+    expect(
+      reduce(state, {
+        type: "transcript",
+        id: "voice",
+        text: "Запоздалые слова",
+        autoAdvance: true,
+      }),
+    ).toBe(state);
+  });
+  test("слишком длинное дополнение сохраняется целиком и требует сокращения", () => {
+    let state = reduce(initialSession("auto"), {
+      type: "edit",
+      index: 0,
+      text: "я".repeat(6000),
+    });
+    state = reduce(state, {
+      type: "start",
+      kind: "transcription",
+      id: "voice",
+      append: true,
+    });
+    state = reduce(state, {
+      type: "transcript",
+      id: "voice",
+      text: "ещё",
+      autoAdvance: true,
+    });
+    expect(state.answers[0].text).toBe("я".repeat(6000) + "\nещё");
+    expect(state.answers[0].confirmed).toBe(false);
+    expect(state.index).toBe(0);
+    expect(state.active).toBeUndefined();
+  });
+});

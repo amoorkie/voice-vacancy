@@ -12,12 +12,12 @@ import type { Answer } from "../../domain/session";
 
 /** Подпись бейджа различает новый текст и правку уже подтверждённой версии. */
 function answerStatus(answer: Answer) {
-  if (answer.confirmed) return "Подтверждено";
+  if (answer.confirmed) return "Готово";
   if (answer.confirmedText !== null) return "Есть изменения";
   return answer.text ? "Есть ответ" : "Без ответа";
 }
 
-/** Редактор текущей темы принимает расшифрованный фрагмент только по выбору пользователя. */
+/** Редактор сохраняет правки; Enter завершает тему, Shift+Enter оставляет перенос строки. */
 function TranscriptEditor({ session }: { session: InterviewSession }) {
   const { state, dispatch } = session;
   const { index, active } = state;
@@ -37,7 +37,17 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
         id="ix-answer"
         value={answer.text}
         onChange={(event) => change(event.target.value)}
-        placeholder="Запишите ответ или напишите здесь…"
+        onKeyDown={(event) => {
+          if (
+            event.key !== "Enter" ||
+            event.shiftKey ||
+            event.nativeEvent.isComposing
+          )
+            return;
+          event.preventDefault();
+          if (!active) dispatch({ type: "confirm" });
+        }}
+        placeholder="Напишите ответ и нажмите Enter. Новая строка — Shift+Enter."
         aria-invalid={textLength(answer.text) > MAX_TEXT}
       />
       {textLength(answer.text) > MAX_TEXT && (
@@ -51,7 +61,10 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
           variant="ghost"
           size="sm"
           disabled={!!active}
-          onClick={() => change(unknownAnswer)}
+          onClick={() => {
+            change(unknownAnswer);
+            dispatch({ type: "confirm" });
+          }}
         >
           Пока не знаю
         </Button>
@@ -88,7 +101,7 @@ type Props = {
   preview: () => void;
   previewActive: boolean;
 };
-/** Четыре подтверждения управляют одним кольцом, бейджами и доступностью черновика. */
+/** Завершённые темы управляют кольцом и автосборкой; круг управляет только записью и повторным открытием. */
 export function InterviewPanel({
   session,
   navigate,
@@ -104,7 +117,6 @@ export function InterviewPanel({
   const topic = topics[index];
   const answer = answers[index];
   const hasAnswer = answer.text.length > 0;
-  const canConfirm = validText(answer.text);
   const pending = !!active && !recording;
   const draftLabel = previewActive
     ? "Превью открыто"
@@ -115,26 +127,18 @@ export function InterviewPanel({
     ? draftLabel
     : recording
       ? "Остановить запись"
-      : active?.phase === "candidate"
-        ? "Выберите действие с фрагментом"
-        : pending
-          ? "Обработка ответа…"
-          : hasAnswer
-            ? "Подтвердить ответ"
-            : "Начать запись";
+      : pending
+        ? "Обработка ответа…"
+        : hasAnswer
+          ? "Дополнить запись"
+          : "Начать запись";
 
-  /** Круг меняет действие на том же месте. Текст и готовность темы меняются только после явного подтверждения. */
+  /** Одна кнопка начинает и останавливает запись; расшифровка сама завершает тему. */
   function mainAction() {
-    if (
-      previewActive ||
-      pending ||
-      (!review && !recording && hasAnswer && !canConfirm)
-    )
-      return;
+    if (previewActive || pending) return;
     if (review) preview();
     else if (recording) dispatch({ type: "stop" });
-    else if (hasAnswer) dispatch({ type: "confirm" });
-    else start("transcription");
+    else start("transcription", true);
   }
   const heading = useRef<HTMLHeadingElement>(null);
   const previous = useRef({ index, review });
@@ -176,23 +180,11 @@ export function InterviewPanel({
               className="ix-glass"
               data-complete={count === 4}
               type="button"
-              aria-disabled={
-                previewActive ||
-                pending ||
-                (!review && !recording && hasAnswer && !canConfirm)
-              }
+              aria-disabled={previewActive || pending}
               aria-label={voiceLabel}
               onClick={mainAction}
             >
-              {review ? (
-                <FileText />
-              ) : recording ? (
-                <Square />
-              ) : hasAnswer && !pending ? (
-                <Check />
-              ) : (
-                <Mic />
-              )}
+              {review ? <FileText /> : recording ? <Square /> : <Mic />}
             </button>
           </ProgressRing>
           <label
@@ -202,50 +194,6 @@ export function InterviewPanel({
           >
             {voiceLabel}
           </label>
-          {!review && !active && hasAnswer && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => start("transcription")}
-            >
-              <Mic />
-              Дополнить запись
-            </Button>
-          )}
-          {active?.phase === "candidate" && (
-            <section className="ix-fragment" aria-label="Новый фрагмент">
-              <strong>Новый фрагмент</strong>
-              <p>{active.candidate}</p>
-              <div className="ix-actions">
-                {answer.text && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      dispatch({ type: "apply-transcript", append: true })
-                    }
-                  >
-                    Добавить к ответу
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant={answer.text ? "outline" : "default"}
-                  onClick={() =>
-                    dispatch({ type: "apply-transcript", append: false })
-                  }
-                >
-                  {answer.text ? "Заменить текст" : "Принять текст"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => dispatch({ type: "cancel" })}
-                >
-                  Отказаться
-                </Button>
-              </div>
-            </section>
-          )}
         </div>
         <nav className="ix-topics" aria-label="Темы интервью">
           {topics.map((item, i) => (

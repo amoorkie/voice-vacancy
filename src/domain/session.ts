@@ -69,7 +69,13 @@ export type Action =
   | { type: "cancel" }
   | { type: "message"; text: string }
   | { type: "failure"; id: string; text: string }
-  | { type: "transcript"; id: string; text: string; fillEmpty?: boolean }
+  | {
+      type: "transcript";
+      id: string;
+      text: string;
+      fillEmpty?: boolean;
+      autoAdvance?: boolean;
+    }
   | { type: "apply-transcript"; append?: boolean }
   | { type: "evaluation"; id: string; value: Evaluation | null }
   | { type: "generated"; id: string; value: Draft | "insufficient" | null }
@@ -251,8 +257,33 @@ export function sessionReducer(state: Session, action: Action): Session {
         ? { ...state, active: undefined, message: action.text }
         : state;
     case "transcript": {
-      if (!attemptCurrent(state, action.id)) return state;
-      // В пустое поле кабинета первый фрагмент попадает сразу. Подтверждение остаётся отдельным действием.
+      if (
+        !attemptCurrent(state, action.id) ||
+        state.active?.kind !== "transcription"
+      )
+        return state;
+      // Кабинет принимает текст и завершает тему атомарно; отменённая или пустая запись не продвигает интервью.
+      if (action.autoAdvance) {
+        if (!action.text.trim())
+          return {
+            ...state,
+            active: undefined,
+            message:
+              "Речь не распознана. Попробуйте ещё раз или напишите ответ.",
+          };
+        const text = state.active.append
+          ? [state.answers[state.index].text, action.text]
+              .filter(Boolean)
+              .join("\n")
+          : action.text;
+        const next = {
+          ...editAnswer(state, state.index, text),
+          active: undefined,
+        };
+        // Полный слишком длинный ответ остаётся в редакторе для сокращения.
+        return sessionReducer(next, { type: "confirm" });
+      }
+      // Самостоятельный ранний экран сохраняет ручной выбор расшифрованного фрагмента.
       if (action.fillEmpty && !state.answers[state.index].text)
         return editAnswer(state, state.index, action.text);
       return {
@@ -310,8 +341,8 @@ export function sessionReducer(state: Session, action: Action): Session {
           active: undefined,
           message:
             action.value === "insufficient"
-              ? "Пока недостаточно сведений о работе. Дополните ответы или скачайте сводку."
-              : "Для этого набора нет готового тестового черновика. Ваши ответы доступны в сводке.",
+              ? "Пока недостаточно сведений о работе. Вернитесь к ответам и дополните их."
+              : "Не удалось собрать черновик для этих ответов. Ваш текст сохранён.",
         };
       return {
         ...state,

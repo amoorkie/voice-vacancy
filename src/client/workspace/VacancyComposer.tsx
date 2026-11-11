@@ -84,8 +84,7 @@ export function VacancyComposer({ onExit }: { onExit: () => void }) {
       !!state.active ||
       !!state.result ||
       state.answers.some((a) => a.text || a.confirmedText !== null);
-    if (state.active?.phase === "recording") dispatch({ type: "stop" });
-    else if (state.active?.phase === "waiting") dispatch({ type: "cancel" });
+    if (state.active) dispatch({ type: "cancel" });
     if (!dirty) {
       run();
       return;
@@ -98,7 +97,7 @@ export function VacancyComposer({ onExit }: { onExit: () => void }) {
       run,
     });
   }
-  /** Защищает непринятый фрагмент и текущую запись при переходе к другому вопросу. */
+  /** Отменяет запись до предупреждения, чтобы поздний ответ не сменил тему под диалогом. */
   function navigate(index: number) {
     if (state.stage === "interview" && index === state.index) return;
     const run = () => dispatch({ type: "navigate", index });
@@ -106,11 +105,11 @@ export function VacancyComposer({ onExit }: { onExit: () => void }) {
       run();
       return;
     }
-    if (state.active.phase === "recording") dispatch({ type: "stop" });
+    dispatch({ type: "cancel" });
     ask({
       title: "Перейти к другой теме?",
       description:
-        "Непринятый фрагмент будет удалён. Введённый текст останется в ответе.",
+        "Незавершённая запись отменена. Введённый текст останется в ответе.",
       approve: "Перейти",
       run,
     });
@@ -181,8 +180,8 @@ export function VacancyComposer({ onExit }: { onExit: () => void }) {
       >
         <SheetTitle className="sr-only">Создание вакансии в Искре</SheetTitle>
         <SheetDescription className="sr-only">
-          Подтвердите четыре ответа, затем откройте редактируемый черновик
-          вакансии.
+          Ответьте на четыре вопроса. После расшифровки каждого ответа откроется
+          следующий вопрос, после последнего — черновик вакансии.
         </SheetDescription>
         <div className="ix-mask" data-open={open}>
           <section
