@@ -20,7 +20,9 @@ export function useInterviewSession(workspace: boolean) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/config", { signal: controller.signal })
+    void fetch(import.meta.env.BASE_URL + "api/config", {
+      signal: controller.signal,
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("Нет конфигурации");
         const config = await response.json();

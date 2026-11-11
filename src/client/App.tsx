@@ -239,7 +239,12 @@ export function App() {
             <div className="intro-ring">
               <ProgressRing completed={0} compact>
                 <span className="glass-surface">
-                  <img src="/assets/microphone-glass.png" alt="" />
+                  <img
+                    src={
+                      import.meta.env.BASE_URL + "assets/microphone-glass.png"
+                    }
+                    alt=""
+                  />
                 </span>
                 <Icon name="mic" />
               </ProgressRing>
@@ -362,7 +367,10 @@ export function App() {
                       >
                         <span className="glass-surface">
                           <img
-                            src="/assets/microphone-glass.png"
+                            src={
+                              import.meta.env.BASE_URL +
+                              "assets/microphone-glass.png"
+                            }
                             alt=""
                             draggable="false"
                           />

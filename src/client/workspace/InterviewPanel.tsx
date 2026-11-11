@@ -169,6 +169,7 @@ export function InterviewPanel({
             <button
               id="ix-main-action"
               className="ix-glass"
+              data-complete={count === 4}
               type="button"
               aria-disabled={
                 previewActive ||
@@ -178,7 +179,6 @@ export function InterviewPanel({
               aria-label={voiceLabel}
               onClick={mainAction}
             >
-              <img src="/assets/microphone-glass.png" alt="" />
               {review ? (
                 <FileText />
               ) : recording ? (

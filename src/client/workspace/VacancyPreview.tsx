@@ -1,11 +1,53 @@
 // Превью показывает сохранённую редакцию и состояние текущей попытки сборки.
 import { VacancyDocument } from "./VacancyDocument";
 import { vacancyDocumentText } from "./vacancy-document";
-import { ArrowRight, Copy, Download, RotateCcw } from "lucide-react";
+import {
+  ArrowRight,
+  Copy,
+  Download,
+  LoaderCircle,
+  RotateCcw,
+} from "lucide-react";
 import { resultStale } from "../../domain/session";
 import { downloadText } from "../export";
 import type { InterviewSession } from "../interview/useInterviewSession";
 import { Button } from "../ui/button";
+
+/** Во время сборки показывает очертания документа, сохраняя доступное действие отмены. */
+function DraftLoading({ cancel }: { cancel: () => void }) {
+  return (
+    <div className="ix-loading">
+      <div className="ix-loading-toolbar">
+        <div className="ix-loading-status" role="status">
+          <span className="ix-loading-symbol" aria-hidden="true">
+            <LoaderCircle />
+          </span>
+          <span>Собираю черновик…</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={cancel}>
+          Отменить сборку
+        </Button>
+      </div>
+      <div className="ix-loading-document" aria-hidden="true">
+        <div className="ix-cover ix-loading-cover">
+          <div className="ix-cover-brand">
+            <span>✦</span> Искра
+          </div>
+          <span className="ix-skeleton ix-skeleton-cover-title" />
+          <span className="ix-skeleton ix-skeleton-cover-line" />
+        </div>
+        {[0, 1, 2].map((section) => (
+          <div className="ix-loading-section" key={section}>
+            <span className="ix-skeleton ix-skeleton-heading" />
+            <span className="ix-skeleton" />
+            <span className="ix-skeleton" />
+            <span className="ix-skeleton ix-skeleton-short" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /** Изменения шести полей и экспорт читают одну редакцию результата. */
 export function VacancyPreview({
@@ -40,14 +82,9 @@ export function VacancyPreview({
           </Button>
         </div>
       </header>
-      <div className="ix-scroll" aria-busy={waiting}>
+      <div className="ix-scroll">
         {waiting ? (
-          <div className="ix-notice" role="status">
-            <strong>Собираю черновик…</strong>
-            <Button variant="outline" onClick={back}>
-              Отменить сборку
-            </Button>
-          </div>
+          <DraftLoading cancel={back} />
         ) : (
           <>
             {state.message && (

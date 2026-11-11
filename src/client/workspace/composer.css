@@ -194,6 +194,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   display: grid;
   place-items: stretch;
 }
+/* Полупрозрачная поверхность и тонкая рамка связывают кнопку с делениями кольца. */
 .ix-glass {
   position: relative;
   isolation: isolate;
@@ -201,27 +202,32 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: #eaf0f9;
-  box-shadow: 0 7px 14px #7589ae40;
-  transition: transform 0.2s;
-}
-.ix-glass img {
-  position: absolute;
-  width: 121%;
-  max-width: none;
-  left: -9.5%;
-  top: -10.5%;
-  z-index: -1;
-  pointer-events: none;
+  border: 1px solid #d7e0da;
+  background: linear-gradient(145deg, #fff 10%, #f6f8f6 48%, #e8eee9 100%);
+  box-shadow:
+    inset 0 1px 2px #fff,
+    0 5px 18px #344b3c0d;
+  transition:
+    transform 200ms,
+    background-color 250ms,
+    border-color 250ms;
 }
 .ix-glass svg {
-  width: 33%;
-  height: 33%;
-  color: #39434c;
+  width: 30%;
+  height: 30%;
+  color: #42574b;
   stroke-width: 1.5;
 }
+.ix-glass[data-complete="true"] {
+  border-color: #c4d9cb;
+  background: linear-gradient(145deg, #fcfefc, #edf5ef);
+}
+.ix-glass[data-complete="true"] svg {
+  color: #376549;
+}
 .ix-glass:hover:not([aria-disabled="true"]) {
-  transform: scale(1.035);
+  transform: scale(1.025);
+  border-color: #a5b9ac;
 }
 .ix-voice .is-recording .ix-glass {
   animation: ix-pulse 1.45s ease-in-out infinite alternate;
@@ -229,17 +235,17 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 @keyframes ix-pulse {
   to {
     box-shadow:
-      0 0 0 6px #d2e3fe77,
-      0 6px 24px #83a7dc77;
+      inset 0 1px 2px #fff,
+      0 0 0 5px #dcebe15c,
+      0 5px 22px #7ca48d26;
   }
 }
 /* Четыре темы занимают одну строку. Переливание относится только к выбранной теме. */
 .ix-topics {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.25fr) minmax(
-      0,
-      1.4fr
-    ) minmax(0, 0.8fr);
+  grid-template-columns:
+    minmax(0, 0.8fr) minmax(0, 1.25fr) minmax(0, 1.4fr)
+    minmax(0, 0.8fr);
   gap: 5px;
   margin: 0 0 24px;
 }
@@ -473,7 +479,8 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 }
 @media (prefers-reduced-motion: reduce) {
   .composer-host *,
-  .composer-host *::before {
+  .composer-host *::before,
+  .composer-host *::after {
     animation: none !important;
     transition: none !important;
   }
@@ -527,6 +534,116 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   max-width: 70ch;
   margin: 0 auto 28px;
   overflow-wrap: anywhere;
+}
+/* Каркас занимает место будущей вакансии. Статус и отмена доступны независимо от анимации. */
+.ix-loading {
+  max-width: 70ch;
+  margin: 0 auto 28px;
+}
+.ix-loading-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 20px;
+}
+.ix-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #515955;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ix-loading-symbol {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #976234;
+  background: #f6efe7;
+}
+.ix-loading-symbol svg {
+  width: 16px;
+  height: 16px;
+  animation: ix-loading-turn 1.8s linear infinite;
+}
+@keyframes ix-loading-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ix-loading-toolbar [data-slot="button"] {
+  color: #5b6460;
+  font-size: 12px;
+}
+.ix-loading-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.ix-skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: 11px;
+  border-radius: 4px;
+  background: #eef0ee;
+}
+.ix-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    #ffffffa6 50%,
+    transparent 85%
+  );
+  transform: translateX(-100%);
+  animation: ix-loading-light 2.6s ease-in-out infinite;
+}
+@keyframes ix-loading-light {
+  70%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+.ix-loading-cover .ix-skeleton {
+  background: #ffefdc26;
+}
+.ix-loading-cover .ix-skeleton::after {
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    #fff1dd26 50%,
+    transparent 85%
+  );
+}
+.ix-skeleton-cover-title {
+  width: 76%;
+  height: 25px;
+  margin-top: 8px;
+}
+.ix-skeleton-cover-line {
+  width: 43%;
+}
+.ix-loading-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 30px;
+}
+.ix-skeleton-heading {
+  width: 32%;
+  height: 15px;
+  margin-bottom: 4px;
+  background: #e5e9e5;
+}
+.ix-skeleton-short {
+  width: 68%;
 }
 .ix-cover {
   position: relative;

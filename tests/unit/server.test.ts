@@ -29,3 +29,26 @@ test("все маршруты обработки отключены незави
     else process.env.AI_ENABLED = original;
   }
 });
+
+// Публичная конфигурация разрешает ровно адрес владельца, сохраняя запрет постороннего origin.
+test("HTTPS origin из конфигурации разрешён, посторонние адреса отклонены", async () => {
+  const original = process.env.PUBLIC_ORIGIN;
+  process.env.PUBLIC_ORIGIN = "https://amo0orkie.ru";
+  const app = createApp(false);
+  try {
+    const valid = await app.inject({
+      url: "/health",
+      headers: { host: "amo0orkie.ru", origin: "https://amo0orkie.ru" },
+    });
+    expect(valid.statusCode).toBe(200);
+    const foreign = await app.inject({
+      url: "/health",
+      headers: { host: "amo0orkie.ru", origin: "https://other.example" },
+    });
+    expect(foreign.statusCode).toBe(403);
+  } finally {
+    await app.close();
+    if (original === undefined) delete process.env.PUBLIC_ORIGIN;
+    else process.env.PUBLIC_ORIGIN = original;
+  }
+});

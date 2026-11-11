@@ -385,8 +385,12 @@
   gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   padding: 2px 1px 6px;
+}
+/* Карусель листается стрелками и жестом, браузерная полоса скрыта. */
+.isk-track::-webkit-scrollbar {
+  display: none;
 }
 .isk-card {
   flex: 0 0 calc((100% - 24px) / 3);

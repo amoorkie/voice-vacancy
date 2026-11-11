@@ -219,6 +219,16 @@ test("ошибка, тайм-аут, нехватка данных и отмен
   const create = page.getByRole("button", { name: "Создать черновик" });
   await create.click();
   await expect(page.getByText("Собираю черновик…")).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const animations = await page
+    .locator(".ix-loading-symbol svg, .ix-skeleton")
+    .evaluateAll((nodes) =>
+      nodes.flatMap((node) => [
+        getComputedStyle(node).animationName,
+        getComputedStyle(node, "::after").animationName,
+      ]),
+    );
+  expect(animations.every((name) => name === "none")).toBe(true);
   await page.keyboard.press("Escape");
   await expect(create).toBeFocused();
   outcome = "error";
