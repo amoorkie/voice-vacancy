@@ -15,8 +15,8 @@ async function enter(page: Page) {
     page.getByRole("heading", { name: "Создание вакансии", exact: true }),
   ).toBeFocused();
 }
-/** Заполняет редактор и подтверждает тему через обычное действие на круге. */
-async function confirm(page: Page, sample = "Вставить пример") {
+/** Отвечает текстом с Enter или сразу завершает неизвестную тему. */
+async function answerTopic(page: Page, sample = "Вставить пример") {
   if (sample === "Пока не знаю")
     await page.getByRole("button", { name: sample, exact: true }).click();
   else {
@@ -31,11 +31,12 @@ async function confirm(page: Page, sample = "Вставить пример") {
       .getByLabel("Расшифровка", { exact: true })
       .fill(workspaceSamples[index]);
   }
-  await page.getByRole("button", { name: "Подтвердить ответ" }).click();
+  if (sample !== "Пока не знаю")
+    await page.getByLabel("Расшифровка", { exact: true }).press("Enter");
 }
 /** Замеряет каждый доступный кадр, начиная до действия и заканчивая после CSS-перехода. */
-async function measure(button: Locator) {
-  return button.evaluate(async (node) => {
+async function measure(button: Locator, event = "click") {
+  return button.evaluate(async (node, event) => {
     const right = document.querySelector(".ix-interview")!;
     const left = document.querySelector(".ix-preview")!;
     const frame = () => {
@@ -46,7 +47,11 @@ async function measure(button: Locator) {
       };
     };
     const frames = [frame()];
-    (node as HTMLButtonElement).click();
+    if (event === "Enter")
+      node.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    else (node as HTMLButtonElement).click();
     const start = performance.now();
     let settled = 0;
     let previous = frames[0].left;
@@ -69,9 +74,9 @@ async function measure(button: Locator) {
       previous = current.left;
     } while (settled < 3 && performance.now() - start < 2500);
     return frames;
-  });
+  }, event);
 }
-test("четыре подтверждения, неподвижное интервью и выезд превью влево", async ({
+test("четыре ответа, неподвижное интервью и выезд превью влево", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -81,7 +86,7 @@ test("четыре подтверждения, неподвижное интер
   for (let i = 0; i < 3; i++) {
     await expect(ring).toHaveAttribute("aria-valuenow", String(i));
     await expect(create).toHaveCount(0);
-    await confirm(page);
+    await answerTopic(page);
   }
   await page.getByLabel("Расшифровка").fill(workspaceSamples[3]);
   await expect(page.locator(".ix-topic-check")).toHaveCount(4);
@@ -90,9 +95,7 @@ test("четыре подтверждения, неподвижное интер
   await expect(page.locator(".ix-topic-check")).toHaveCount(3);
   await expect(page.locator(".ix-topic-dot")).toHaveCount(1);
   await page.getByLabel("Расшифровка").fill(workspaceSamples[3]);
-  const forward = await measure(
-    page.getByRole("button", { name: "Подтвердить ответ" }),
-  );
+  const forward = await measure(page.getByLabel("Расшифровка"), "Enter");
   await expect(ring).toHaveAttribute("aria-valuenow", "4");
   const role = page.getByRole("textbox", {
     name: "Название вакансии",
@@ -142,7 +145,7 @@ test("четыре подтверждения, неподвижное интер
   ).toBeLessThanOrEqual(1);
   for (const frame of [...forward, ...reverse])
     expect(frame.right).toEqual([864, 16, 560, 868]);
-  await page.getByRole("button", { name: /Задачи — Подтверждено/ }).click();
+  await page.getByRole("button", { name: /Задачи — Готово/ }).click();
   await page.getByLabel("Расшифровка").fill("Изменилась задача");
   await expect(ring).toHaveAttribute("aria-valuenow", "3");
   await page.getByRole("button", { name: "Открыть черновик" }).click();
@@ -155,10 +158,8 @@ test("четыре подтверждения, неподвижное интер
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Отменить правку" }).click();
   await expect(ring).toHaveAttribute("aria-valuenow", "4");
-  await page
-    .getByRole("button", { name: /Первое полугодие — Подтверждено/ })
-    .click();
-  await confirm(page, "Пока не знаю");
+  await page.getByRole("button", { name: /Первое полугодие — Готово/ }).click();
+  await answerTopic(page, "Пока не знаю");
   await page.getByRole("button", { name: "Открыть черновик" }).click();
   await expect(
     article.getByRole("heading", { name: "Моя редакция роли" }),
@@ -179,36 +180,40 @@ test("четыре подтверждения, неподвижное интер
   ).toHaveValue(unknownAnswer);
 });
 
-test("запись и ручные правки сохраняются отдельно от подтверждения и прогресса", async ({
+test("расшифровка дополняет правки, отмена не завершает тему, Enter проверяет длину", async ({
   page,
 }) => {
   await enter(page);
   const answer = page.getByLabel("Расшифровка");
+  const ring = page.getByRole("progressbar");
   await answer.fill("Мой термин");
   await page.getByRole("button", { name: "Дополнить запись" }).click();
   await page.getByRole("button", { name: /Первое полугодие —/ }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Добавить к ответу" }).click();
-  await expect(answer).toHaveValue("Мой термин\n" + workspaceSamples[0]);
+  await expect(answer).toHaveValue("Мой термин");
+  await expect(ring).toHaveAttribute("aria-valuenow", "0");
   await page.getByRole("button", { name: "Дополнить запись" }).click();
   await page.getByRole("button", { name: "Остановить запись" }).click();
-  await page.getByRole("button", { name: "Заменить текст" }).click();
-  await expect(answer).toHaveValue(workspaceSamples[0]);
+  await expect(ring).toHaveAttribute("aria-valuenow", "1");
+  await page.getByRole("button", { name: /Задачи — Готово/ }).click();
+  await expect(answer).toHaveValue("Мой термин\n" + workspaceSamples[0]);
   await expect(
-    page.getByRole("button", { name: "Проверить полноту" }),
+    page.getByRole("button", {
+      name: /Подтвердить ответ|Добавить к ответу|Заменить текст|Проверить полноту/,
+    }),
   ).toHaveCount(0);
-  await expect(page.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "0",
-  );
   await answer.fill("😀".repeat(6001));
-  await expect(
-    page.getByRole("button", { name: "Подтвердить ответ" }),
-  ).toBeDisabled();
+  await answer.press("Enter");
+  await expect(ring).toHaveAttribute("aria-valuenow", "0");
+  await expect(answer).toHaveValue("😀".repeat(6001));
+  await answer.fill("Строка");
+  await answer.press("End");
+  await answer.press("Shift+Enter");
+  await expect(answer).toHaveValue("Строка\n");
+  await expect(ring).toHaveAttribute("aria-valuenow", "0");
   await answer.fill("😀".repeat(6000));
-  await expect(
-    page.getByRole("button", { name: "Подтвердить ответ" }),
-  ).toBeEnabled();
+  await answer.press("Enter");
+  await expect(ring).toHaveAttribute("aria-valuenow", "1");
 });
 
 test("ошибка, тайм-аут, нехватка данных и отмена сборки сохраняют ответы", async ({
@@ -241,7 +246,7 @@ test("ошибка, тайм-аут, нехватка данных и отмен
     });
   });
   await enter(page);
-  for (let i = 0; i < 4; i++) await confirm(page, "Пока не знаю");
+  for (let i = 0; i < 4; i++) await answerTopic(page, "Пока не знаю");
   const create = page.getByRole("button", { name: "Создать черновик" });
   await expect(page.getByText("Собираю черновик…")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -275,10 +280,10 @@ test("ошибка, тайм-аут, нехватка данных и отмен
     "Пока недостаточно сведений",
   );
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /Задачи — Подтверждено/ }).click();
+  await page.getByRole("button", { name: /Задачи — Готово/ }).click();
   await expect(page.getByLabel("Расшифровка")).toHaveValue(unknownAnswer);
   await page.getByLabel("Расшифровка").fill("Разобрать новую задачу");
-  await page.getByRole("button", { name: "Подтвердить ответ" }).click();
+  await page.getByLabel("Расшифровка").press("Enter");
   outcome = "invalid";
   await create.click();
   await expect(page.getByRole("status")).toContainText("Неверный черновик");
@@ -307,7 +312,7 @@ test("на телефоне активна одна панель, Escape воз�
   ).toHaveCount(0);
   for (const phase of ["interview", "preview"]) {
     if (phase === "preview") {
-      for (let i = 0; i < 4; i++) await confirm(page);
+      for (let i = 0; i < 4; i++) await answerTopic(page);
       await expect(
         page.getByRole("textbox", {
           name: "Ежедневные задачи, пункт 1",
@@ -344,7 +349,7 @@ test("автосборка открывает одно превью, отмен�
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await enter(page);
-  for (let i = 0; i < 4; i++) await confirm(page);
+  for (let i = 0; i < 4; i++) await answerTopic(page);
   const create = page.getByRole("button", { name: "Создать черновик" });
   await expect(
     page.getByRole("button", { name: "Отменить сборку" }),
@@ -375,35 +380,54 @@ test("автосборка открывает одно превью, отмен�
   ).toHaveValue(/Разрабатывать формы/);
 });
 
-test("первая запись останавливается и подтверждается одной круглой кнопкой", async ({
+test("четыре записи сами открывают следующие вопросы и единственный черновик", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enter(page);
   const button = page.locator(".ix-glass");
-  await expect(button).toHaveAccessibleName("Начать запись");
-  await button.focus();
-  await page.keyboard.press("Enter");
-  await expect(button).toHaveAccessibleName("Остановить запись");
-  await page.keyboard.press("Enter");
-  await expect(page.getByLabel("Расшифровка")).toHaveValue(workspaceSamples[0]);
-  await expect(button).toHaveAccessibleName("Подтвердить ответ");
-  await expect(button).toBeFocused();
-  await expect(page.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "0",
+  const motion = page.locator(".progress-motion");
+  await expect(motion).toHaveCSS("animation-name", "ix-orbit-drift");
+  await expect(page.locator(".ix-voice .progress-segment").first()).toHaveCSS(
+    "animation-name",
+    "ix-scan",
   );
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "1",
-  );
+  for (let i = 0; i < 4; i++) {
+    await expect(button).toHaveAccessibleName("Начать запись");
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(button).toHaveAccessibleName("Остановить запись");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".ix-topic-check")).toHaveCount(i + 1);
+    if (i < 3) {
+      await expect(page.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuenow",
+        String(i + 1),
+      );
+      await expect(page.locator(".ix-question h3")).toBeFocused();
+      await expect(page.getByLabel("Расшифровка")).toHaveValue("");
+    }
+  }
+  await expect(
+    page.getByRole("heading", { name: "Черновик вакансии" }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await page.keyboard.press("Escape");
   const ticks = page.locator(".ix-voice .is-filled");
-  await expect(ticks).toHaveCount(15);
+  await expect(ticks).toHaveCount(60);
   await expect
-    .poll(() => ticks.last().evaluate((n) => getComputedStyle(n).transform))
-    .toContain("2.95");
-  await expect(button).toHaveAccessibleName("Начать запись");
+    .poll(() =>
+      ticks
+        .last()
+        .evaluate((n) =>
+          Number(getComputedStyle(n).getPropertyValue("--tick-scale")),
+        ),
+    )
+    .toBeCloseTo(2.95, 2);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(motion).toHaveCSS("animation-name", "none");
+  await expect(ticks.first()).toHaveCSS("animation-name", "none");
 });
 
 test("правлю статью сразу, разделяю и объединяю пункты, передаю текущую редакцию", async ({
@@ -411,7 +435,7 @@ test("правлю статью сразу, разделяю и объединя
   context,
 }) => {
   await enter(page);
-  for (let i = 0; i < 4; i++) await confirm(page);
+  for (let i = 0; i < 4; i++) await answerTopic(page);
   const article = page.getByRole("article");
   const field = (name: string) =>
     article.getByRole("textbox", { name, exact: true });

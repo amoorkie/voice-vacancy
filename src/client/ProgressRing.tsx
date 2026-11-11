@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 const SEGMENTS = 60;
 
-/** Показывает подтверждённый прогресс и передаёт громкость микрофона бегущей волне делений. */
+/** Показывает подтверждённый прогресс и передаёт сглаженную громкость непрерывной волне делений. */
 export function ProgressRing({
   completed,
   total = 4,
@@ -50,47 +50,49 @@ export function ProgressRing({
       }
       className={`progress-orbit ${recording ? "is-recording" : ""} ${compact ? "compact" : ""}`}
     >
-      <svg
-        className="progress-segments"
-        viewBox="0 0 400 400"
-        role="progressbar"
-        aria-label="Прогресс интервью"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={completed}
-        aria-valuetext={`Подтверждено ${completed} из ${total} тем`}
-      >
-        {Array.from({ length: SEGMENTS }, (_, index) => {
-          const changed =
-            index >= Math.min(previous, count) &&
-            index < Math.max(previous, count);
-          const order =
-            count > previous ? index - previous : previous - index - 1;
-          // Внешняя группа задаёт угол. Деление растёт вдоль собственной оси независимо от этого угла.
-          return (
-            <g
-              key={index}
-              transform={`rotate(${index * (360 / SEGMENTS)} 200 200)`}
-            >
-              <line
-                x1="200"
-                y1={scan ? 26 : 9}
-                x2="200"
-                y2={scan ? 34 : 21}
-                className={`progress-segment ${index < count ? "is-filled" : ""}`}
-                style={
-                  {
-                    "--segment-delay": `${changed ? Math.max(0, order) * 22 : 0}ms`,
-                    ...(scan && {
-                      "--scan-lag": `${index * 28 - SEGMENTS * 28}ms`,
-                    }),
-                  } as CSSProperties
-                }
-              />
-            </g>
-          );
-        })}
-      </svg>
+      <div className="progress-motion">
+        <svg
+          className="progress-segments"
+          viewBox="0 0 400 400"
+          role="progressbar"
+          aria-label="Прогресс интервью"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={completed}
+          aria-valuetext={`Готово ${completed} из ${total} тем`}
+        >
+          {Array.from({ length: SEGMENTS }, (_, index) => {
+            const changed =
+              index >= Math.min(previous, count) &&
+              index < Math.max(previous, count);
+            const order =
+              count > previous ? index - previous : previous - index - 1;
+            // Внешняя группа задаёт угол. Деление растёт вдоль собственной оси независимо от этого угла.
+            return (
+              <g
+                key={index}
+                transform={`rotate(${index * (360 / SEGMENTS)} 200 200)`}
+              >
+                <line
+                  x1="200"
+                  y1={scan ? 26 : 9}
+                  x2="200"
+                  y2={scan ? 34 : 21}
+                  className={`progress-segment ${index < count ? "is-filled" : ""}`}
+                  style={
+                    {
+                      "--segment-delay": `${changed ? Math.max(0, order) * 22 : 0}ms`,
+                      ...(scan && {
+                        "--scan-lag": `${index * 80 - SEGMENTS * 80}ms`,
+                      }),
+                    } as CSSProperties
+                  }
+                />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
       <div className="orbit-center">{children}</div>
     </div>
   );

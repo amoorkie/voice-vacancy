@@ -1,6 +1,10 @@
 // Общий сеанс для самостоятельного интервью и панелей кабинета.
-import { useEffect, useRef, useReducer, useState } from "react";
-import { initialSession, sessionReducer } from "../../domain/session";
+import { useCallback, useEffect, useRef, useReducer, useState } from "react";
+import {
+  initialSession,
+  sessionReducer,
+  type Action,
+} from "../../domain/session";
 import { workspaceSamples } from "../../domain/fixtures";
 import { runFixture } from "../fixture-adapter";
 import { runOwnerApi, type RuntimeConfig } from "../owner-adapter";
@@ -21,6 +25,16 @@ export function useInterviewSession(workspace: boolean) {
   const [seconds, setSeconds] = useState(0);
   const [voiceLevel, setVoiceLevel] = useState(0);
   const microphone = useRef<ReturnType<typeof openMicrophone> | null>(null);
+  /** Кабинет завершает тему сразу по расшифровке; самостоятельный экран сохраняет прежний цикл. */
+  const receive = useCallback(
+    (action: Action) =>
+      dispatch(
+        workspace && action.type === "transcript"
+          ? { ...action, autoAdvance: true }
+          : action,
+      ),
+    [workspace],
+  );
   useEffect(() => {
     const controller = new AbortController();
     void fetch(import.meta.env.BASE_URL + "api/config", {
@@ -51,11 +65,11 @@ export function useInterviewSession(workspace: boolean) {
       return runFixture(
         active,
         latest.current,
-        dispatch,
+        receive,
         workspace ? workspaceSamples : undefined,
       );
     return runOwnerApi(active, latest.current, runtime, dispatch);
-  }, [active?.id, active?.phase, runtime, workspace]);
+  }, [active?.id, active?.phase, runtime, workspace, receive]);
   useEffect(() => {
     if (
       !active ||
@@ -76,7 +90,7 @@ export function useInterviewSession(workspace: boolean) {
       active,
       runtime,
       workspace,
-      dispatch,
+      receive,
       setVoiceLevel,
     );
     microphone.current = capture;
@@ -84,7 +98,7 @@ export function useInterviewSession(workspace: boolean) {
       capture.cancel();
       if (microphone.current === capture) microphone.current = null;
     };
-  }, [active?.id, runtime, workspace]);
+  }, [active?.id, runtime, workspace, receive]);
   useEffect(() => {
     if (
       active?.kind === "transcription" &&
