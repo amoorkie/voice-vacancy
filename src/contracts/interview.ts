@@ -1,4 +1,4 @@
-// Общие типы и проверки тестового адаптера; контракт API владельца будет отдельным.
+// Общие типы и проверки; секреты и транспорт провайдера остаются на сервере.
 import { z } from "zod";
 export const MAX_TEXT = 6000;
 export const topicIds = ["Q1", "Q2", "Q3", "Q4"] as const;
@@ -23,23 +23,51 @@ export const sectionNames: Record<SectionId, string> = {
 export const topicSchema = z.enum(topicIds);
 export const evaluationSchema = z
   .object({
-    kind: z.literal("fixture"),
+    kind: z.enum(["fixture", "ai"]),
     items: z.array(
       z
         .object({
           slotId: z.string(),
           status: z.enum(["present", "missing", "explicitly_unknown"]),
           evidence: z.array(z.string().min(1)),
+          reason: z.string().max(1000).optional(),
         })
         .strict(),
     ),
     followUp: z.string().optional(),
+    conflicts: z
+      .array(
+        z
+          .object({
+            slotIds: z.array(z.string()).min(1),
+            evidence: z.array(z.string().min(1)).min(2),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 export type Evaluation = z.infer<typeof evaluationSchema>;
 export type Draft = {
   sections: Record<SectionId, string>;
   sources: Partial<Record<SectionId, TopicId[]>>;
+  origin?: "ai";
+  claims?: Partial<
+    Record<
+      SectionId,
+      {
+        id: string;
+        kind: "fact" | "unknown" | "conflict";
+        text: string;
+        sourceRefs: {
+          questionId: TopicId;
+          confirmedRevision: number;
+          quote: string;
+        }[];
+        reason?: "not-mentioned";
+      }[]
+    >
+  >;
 };
 export type Outcome = "success" | "error" | "timeout";
 export type OperationKind = "transcription" | "evaluation" | "generation";
@@ -70,6 +98,21 @@ export function validateEvaluation(
       throw new Error("Нет источника");
     if (item.evidence.some((quote) => !text.includes(quote)))
       throw new Error("Чужая цитата");
+    if (item.status === "missing" && item.evidence.length)
+      throw new Error("Цитаты конфликта должны быть выделены отдельно");
+  }
+  for (const conflict of value.conflicts ?? []) {
+    if (
+      new Set(conflict.evidence).size < 2 ||
+      conflict.evidence.some((quote) => !text.includes(quote)) ||
+      conflict.slotIds.some(
+        (id) =>
+          !value.items.some(
+            (item) => item.slotId === id && item.status === "missing",
+          ),
+      )
+    )
+      throw new Error("Неверное основание конфликта");
   }
   return value;
 }

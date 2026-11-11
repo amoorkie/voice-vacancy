@@ -18,6 +18,7 @@ export default defineConfig({
   webServer: {
     command: "npm start",
     url: "http://127.0.0.1:4317",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
+    env: { AI_ENABLED: "false" },
   },
 });

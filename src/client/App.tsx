@@ -17,6 +17,7 @@ import {
 } from "../domain/fixtures";
 import { initialSession, resultStale, sessionReducer } from "../domain/session";
 import { runFixture } from "./fixture-adapter";
+import { runOwnerApi, type RuntimeConfig } from "./owner-adapter";
 import { downloadText, summaryText, vacancyText } from "./export";
 
 /** Единый набор простых векторных иконок; смысл всегда есть и в подписи кнопки. */
@@ -144,7 +145,7 @@ function ProgressRing({
         {recording
           ? "Тестовая запись"
           : waiting
-            ? "Обработка примера"
+            ? "Обработка ответа"
             : present === undefined
               ? "Полнота не проверена"
               : `Есть сведения: ${present} из ${total}; явно неизвестно: ${unknown}`}
@@ -164,6 +165,8 @@ function ProgressRing({
 
 /** Соединяет доменные события с UI; тестовый адаптер запускается только для активной попытки. */
 export function App() {
+  const [runtime, setRuntime] = useState<RuntimeConfig>();
+  const live = runtime?.mode === "api";
   const [state, dispatch] = useReducer(sessionReducer, undefined, () =>
     initialSession(),
   );
@@ -194,13 +197,36 @@ export function App() {
     ).length ?? 0;
 
   useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/config", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Нет конфигурации");
+        const config = await response.json();
+        if (
+          !["fixtures", "api", "unavailable"].includes(config.mode) ||
+          typeof config.csrfToken !== "string"
+        )
+          throw new Error("Неверная конфигурация");
+        setRuntime(config);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setRuntime({ mode: "unavailable", csrfToken: "", model: null });
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
     heading.current?.focus();
     setSupplement(null);
   }, [state.stage, state.index]);
   useEffect(() => {
     if (active?.phase !== "waiting") return;
-    return runFixture(active, latest.current, dispatch);
-  }, [active?.id, active?.phase]);
+    if (!runtime) return;
+    if (active.kind === "transcription" || runtime.mode === "fixtures")
+      return runFixture(active, latest.current, dispatch);
+    return runOwnerApi(active, latest.current, runtime, dispatch);
+  }, [active?.id, active?.phase, runtime]);
   useEffect(() => {
     if (!recording) {
       setSeconds(0);
@@ -231,7 +257,7 @@ export function App() {
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
 
-  /** Запускает имитацию; реальный адаптер в этой сборке недоступен. */
+  /** Запускает выбранную обработку; голос пока остаётся явной имитацией. */
   function start(kind: OperationKind, append = false) {
     dispatch({
       type: "start",
@@ -271,7 +297,9 @@ export function App() {
   function generate() {
     if (state.result && Object.keys(state.result.edits).length)
       setModal({
-        title: "Создать новый тестовый черновик?",
+        title: live
+          ? "Создать новый черновик?"
+          : "Создать новый тестовый черновик?",
         text: "При успешном результате он заменит ваши ручные правки. При ошибке текущий текст останется.",
         run: () => start("generation"),
       });
@@ -305,7 +333,11 @@ export function App() {
         </a>
         <span className="demo-badge">
           <i />
-          Тестовый прототип
+          {live
+            ? "Ваш API · текст"
+            : runtime?.mode === "unavailable"
+              ? "API недоступен"
+              : "Тестовый прототип"}
         </span>
       </header>
       <main id="main">
@@ -331,6 +363,7 @@ export function App() {
             </div>
             <button
               className="primary large"
+              disabled={!runtime}
               onClick={() => dispatch({ type: "begin" })}
             >
               Начать интервью <Icon name="arrow" />
@@ -339,14 +372,21 @@ export function App() {
               Можно отвечать текстом. Если чего-то не знаете — так и напишите.
             </p>
             <div className="intro-notice">
-              <strong>Пока проверяем сценарий</strong>
+              <strong>
+                {live
+                  ? "Проверка и черновик через ваш API"
+                  : "Пока проверяем сценарий"}
+              </strong>
               <p>
-                Запись и обработка работают на готовых примерах. Микрофон и
-                внешний API не подключены.
+                {live
+                  ? "По нажатию проверки текст отправляется в api.wikivibe.dev. Срок хранения на стороне сервиса пока не подтверждён. Микрофон ещё не подключён: запись использует пример."
+                  : runtime?.mode === "unavailable"
+                    ? "Конфигурация API недоступна. Можно заполнить ответы и скачать сводку; ошибка не подменяется готовым результатом."
+                    : "Запись и обработка работают на готовых примерах. Микрофон и внешний API не подключены."}
               </p>
               <p>
-                Ответы останутся только в этой вкладке. Перед закрытием или
-                обновлением скачайте текст.
+                Рабочая копия ответов останется в этой вкладке. Перед закрытием
+                или обновлением скачайте текст.
               </p>
             </div>
             <div className="intro-steps">
@@ -561,15 +601,43 @@ export function App() {
                     <div className="evaluation">
                       <strong>
                         {present === answer.evaluation.items.length
-                          ? "В примере есть нужные сведения"
+                          ? live
+                            ? "В ответе есть нужные сведения"
+                            : "В примере есть нужные сведения"
                           : unknown
                             ? "Неизвестное отмечено — можно продолжать"
-                            : "В примере не хватает конкретики"}
+                            : live
+                              ? "В ответе не хватает конкретики"
+                              : "В примере не хватает конкретики"}
                       </strong>
                       <p>
-                        Это заранее подготовленная оценка примера, а не ответ
-                        модели.
+                        {live
+                          ? "Это оценка модели. Проверьте основания; ответ можно подтвердить с пробелами."
+                          : "Это заранее подготовленная оценка примера, а не ответ модели."}
                       </p>
+                      {live && (
+                        <details>
+                          <summary>Основания оценки</summary>
+                          {answer.evaluation.items.map((item) => (
+                            <p key={item.slotId}>
+                              {item.reason}
+                              {item.evidence.map((quote, i) => (
+                                <q key={i}>{quote}</q>
+                              ))}
+                            </p>
+                          ))}
+                          {answer.evaluation.conflicts?.map((conflict, i) => (
+                            <div key={i}>
+                              <strong>Нужно уточнить противоречие</strong>
+                              {conflict.evidence.map((quote, j) => (
+                                <p key={j}>
+                                  <q>{quote}</q>
+                                </p>
+                              ))}
+                            </div>
+                          ))}
+                        </details>
+                      )}
                       {answer.evaluation.followUp && (
                         <>
                           <p className="follow-up">
@@ -672,7 +740,7 @@ export function App() {
                       <small>
                         {a.confirmed ? "Подтверждено" : "Не подтверждено"} ·{" "}
                         {a.evaluation
-                          ? `Тестовая оценка: ${a.evaluation.items.filter((item) => item.status === "present").length}/${a.evaluation.items.length}; неизвестно: ${a.evaluation.items.filter((item) => item.status === "explicitly_unknown").length}`
+                          ? `${a.evaluation.kind === "ai" ? "Оценка модели" : "Тестовая оценка"}: ${a.evaluation.items.filter((item) => item.status === "present").length}/${a.evaluation.items.length}; неизвестно: ${a.evaluation.items.filter((item) => item.status === "explicitly_unknown").length}`
                           : "Полнота не проверена"}
                       </small>
                     </article>
@@ -680,15 +748,17 @@ export function App() {
                   <div className="notice">
                     <strong>Следующий шаг — черновик вакансии</strong>
                     <p>
-                      В тестовом режиме он доступен для готовых примеров. Ваш
-                      произвольный текст можно сохранить в сводке.
+                      {live
+                        ? "Передам четыре подтверждённых ответа в ваш API. Проверьте факты в готовом тексте."
+                        : "В тестовом режиме он доступен для готовых примеров. Ваш произвольный текст можно сохранить в сводке."}
                     </p>
                     <button
                       className="primary"
                       disabled={confirmed < 4 || !!active}
                       onClick={generate}
                     >
-                      Создать тестовый черновик <Icon name="arrow" />
+                      {live ? "Создать черновик" : "Создать тестовый черновик"}{" "}
+                      <Icon name="arrow" />
                     </button>
                     {confirmed < 4 && (
                       <p>Сначала подтвердите все четыре ответа.</p>
@@ -716,7 +786,9 @@ export function App() {
               {state.stage === "result" && state.result && (
                 <section className="result-panel">
                   <span className="eyebrow">
-                    ТЕСТОВЫЙ ПРИМЕР · МОЖНО РЕДАКТИРОВАТЬ
+                    {state.result.generated.origin === "ai"
+                      ? "ЧЕРНОВИК МОДЕЛИ · ПРОВЕРЬТЕ ФАКТЫ"
+                      : "ТЕСТОВЫЙ ПРИМЕР · МОЖНО РЕДАКТИРОВАТЬ"}
                   </span>
                   <h1 ref={heading} tabIndex={-1}>
                     Основа вакансии готова
@@ -772,17 +844,35 @@ export function App() {
                         state.result!.generated.sources[id] && (
                           <details>
                             <summary>На чём основан раздел</summary>
-                            {state.result!.generated.sources[id]!.map(
-                              (source) => (
-                                <p key={source} className="preserve">
-                                  {
-                                    state.result!.sourceTexts[
-                                      topics.findIndex((t) => t.id === source)
-                                    ]
-                                  }
-                                </p>
-                              ),
-                            )}
+                            {state.result!.generated.claims?.[id]
+                              ? state.result!.generated.claims[id]!.map(
+                                  (claim) => (
+                                    <div key={claim.id}>
+                                      <p>{claim.text}</p>
+                                      {claim.sourceRefs.map((ref, i) => (
+                                        <blockquote key={i}>
+                                          {ref.quote}
+                                        </blockquote>
+                                      ))}
+                                      {claim.reason === "not-mentioned" && (
+                                        <p>Не указано в ответах</p>
+                                      )}
+                                    </div>
+                                  ),
+                                )
+                              : state.result!.generated.sources[id]!.map(
+                                  (source) => (
+                                    <p key={source} className="preserve">
+                                      {
+                                        state.result!.sourceTexts[
+                                          topics.findIndex(
+                                            (t) => t.id === source,
+                                          )
+                                        ]
+                                      }
+                                    </p>
+                                  ),
+                                )}
                           </details>
                         )
                       )}
@@ -822,7 +912,9 @@ export function App() {
               )}
               {active?.kind === "generation" && (
                 <div className="notice" role="status">
-                  <strong>Готовим тестовый черновик…</strong>
+                  <strong>
+                    {live ? "Готовим черновик…" : "Готовим тестовый черновик…"}
+                  </strong>
                   <p>Ответы и текущая редакция остаются на месте.</p>
                   <button onClick={() => dispatch({ type: "cancel" })}>
                     Отменить
@@ -848,33 +940,39 @@ export function App() {
                 </button>
               </footer>
               <details className="test-settings">
-                <summary>Проверка тестового сценария</summary>
-                <p>
-                  Все операции локальные. Ошибка и тайм-аут имитируются за 1–2
-                  секунды.
-                </p>
-                <label htmlFor="outcome">Следующая тестовая операция</label>
-                <select
-                  id="outcome"
-                  value={state.outcome}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "outcome",
-                      outcome: event.target.value as Outcome,
-                    })
-                  }
-                >
-                  <option value="success">Успешный результат</option>
-                  <option value="error">Сбой сервиса</option>
-                  <option value="timeout">Тайм-аут</option>
-                </select>
-                {state.stage === "interview" && state.index === 0 && (
-                  <button
-                    disabled={!!active}
-                    onClick={() => replaceText(vagueAnswer)}
-                  >
-                    Пример с нехваткой конкретики
-                  </button>
+                <summary>
+                  {live ? "Управление интервью" : "Проверка тестового сценария"}
+                </summary>
+                {!live && (
+                  <>
+                    <p>
+                      Все операции локальные. Ошибка и тайм-аут имитируются за
+                      1–2 секунды.
+                    </p>
+                    <label htmlFor="outcome">Следующая тестовая операция</label>
+                    <select
+                      id="outcome"
+                      value={state.outcome}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "outcome",
+                          outcome: event.target.value as Outcome,
+                        })
+                      }
+                    >
+                      <option value="success">Успешный результат</option>
+                      <option value="error">Сбой сервиса</option>
+                      <option value="timeout">Тайм-аут</option>
+                    </select>
+                    {state.stage === "interview" && state.index === 0 && (
+                      <button
+                        disabled={!!active}
+                        onClick={() => replaceText(vagueAnswer)}
+                      >
+                        Пример с нехваткой конкретики
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   onClick={() =>
