@@ -5,6 +5,7 @@ import { workspaceSamples } from "../../domain/fixtures";
 import { runFixture } from "../fixture-adapter";
 import { runOwnerApi, type RuntimeConfig } from "../owner-adapter";
 import type { OperationKind } from "../../contracts/interview";
+import { openMicrophone } from "./microphone";
 
 /** Хранит ответы и редактируемый результат, выполняет и отменяет операции одного сеанса. */
 export function useInterviewSession(workspace: boolean) {
@@ -18,6 +19,8 @@ export function useInterviewSession(workspace: boolean) {
   const active = state.active;
   const recording = active?.phase === "recording";
   const [seconds, setSeconds] = useState(0);
+  const [voiceLevel, setVoiceLevel] = useState(0);
+  const microphone = useRef<ReturnType<typeof openMicrophone> | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     void fetch(import.meta.env.BASE_URL + "api/config", {
@@ -43,7 +46,8 @@ export function useInterviewSession(workspace: boolean) {
   useEffect(() => {
     if (active?.phase !== "waiting") return;
     if (!runtime) return;
-    if (active.kind === "transcription" || runtime.mode === "fixtures")
+    if (active.kind === "transcription" && runtime.mode !== "fixtures") return;
+    if (runtime.mode === "fixtures")
       return runFixture(
         active,
         latest.current,
@@ -52,6 +56,43 @@ export function useInterviewSession(workspace: boolean) {
       );
     return runOwnerApi(active, latest.current, runtime, dispatch);
   }, [active?.id, active?.phase, runtime, workspace]);
+  useEffect(() => {
+    if (
+      !active ||
+      active.kind !== "transcription" ||
+      !runtime ||
+      runtime.mode === "fixtures"
+    )
+      return;
+    if (runtime.voice !== "microphone") {
+      dispatch({
+        type: "failure",
+        id: active.id,
+        text: "Микрофон сейчас недоступен. Напишите ответ текстом.",
+      });
+      return;
+    }
+    const capture = openMicrophone(
+      active,
+      runtime,
+      workspace,
+      dispatch,
+      setVoiceLevel,
+    );
+    microphone.current = capture;
+    return () => {
+      capture.cancel();
+      if (microphone.current === capture) microphone.current = null;
+    };
+  }, [active?.id, runtime, workspace]);
+  useEffect(() => {
+    if (
+      active?.kind === "transcription" &&
+      active.phase === "waiting" &&
+      runtime?.mode !== "fixtures"
+    )
+      void microphone.current?.stop();
+  }, [active?.id, active?.phase, runtime]);
   useEffect(() => {
     if (!recording) {
       setSeconds(0);
@@ -66,7 +107,7 @@ export function useInterviewSession(workspace: boolean) {
     return () => window.clearInterval(timer);
   }, [recording]);
   useEffect(() => {
-    // Скрытие вкладки отменяет именно имитацию записи: никаких скрытых отправок нет.
+    // При скрытии вкладки прекращаю запись и освобождаю микрофон.
     const hide = () => {
       if (document.hidden && latest.current.active?.phase === "recording")
         dispatch({ type: "cancel" });
@@ -82,7 +123,7 @@ export function useInterviewSession(workspace: boolean) {
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
 
-  /** Запускает выбранную обработку; голос пока остаётся явной имитацией. */
+  /** Запускает одну попытку. Адаптер записи выбирается конфигурацией сервера. */
   function start(kind: OperationKind, append = false) {
     dispatch({
       type: "start",
@@ -106,6 +147,6 @@ export function useInterviewSession(workspace: boolean) {
     }
   }
 
-  return { state, dispatch, runtime, seconds, start, copy };
+  return { state, dispatch, runtime, seconds, voiceLevel, start, copy };
 }
 export type InterviewSession = ReturnType<typeof useInterviewSession>;

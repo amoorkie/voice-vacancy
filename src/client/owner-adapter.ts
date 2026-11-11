@@ -12,6 +12,7 @@ export type RuntimeConfig = {
   mode: "fixtures" | "api" | "unavailable";
   csrfToken: string;
   model: string | null;
+  voice?: "microphone" | "fixtures" | "unavailable";
 };
 
 /** Выполняет одну попытку; отмена при правке не оставляет фоновой повторной отправки. */

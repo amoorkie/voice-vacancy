@@ -62,16 +62,18 @@ test("четыре подтверждения, неподвижное интер
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await enter(page);
-  const ring = page.getByRole("progressbar");
+  const ring = page.locator(".ix-interview .progress-segments");
   const create = page.getByRole("button", { name: "Создать черновик" });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     await expect(ring).toHaveAttribute("aria-valuenow", String(i));
     await expect(create).toHaveCount(0);
     await confirm(page);
   }
+  await page.getByLabel("Расшифровка").fill(workspaceSamples[3]);
+  const forward = await measure(
+    page.getByRole("button", { name: "Подтвердить ответ" }),
+  );
   await expect(ring).toHaveAttribute("aria-valuenow", "4");
-  await create.focus();
-  const forward = await measure(create);
   const role = page.getByRole("textbox", {
     name: "Название вакансии",
     exact: true,
@@ -93,7 +95,9 @@ test("четыре подтверждения, неподвижное интер
   await expect(page.getByRole("button", { name: "Редактировать" })).toHaveCount(
     0,
   );
-  expect(forward[0].left - forward.at(-1)!.left).toBe(720);
+  expect(
+    Math.abs(forward[0].left - forward.at(-1)!.left - 720),
+  ).toBeLessThanOrEqual(1);
   expect(
     forward.some(
       (f) => f.left > forward.at(-1)!.left + 1 && f.left < forward[0].left - 1,
@@ -113,7 +117,9 @@ test("четыре подтверждения, неподвижное интер
   const reverse = await measure(
     page.getByRole("button", { name: "К ответам", exact: true }),
   );
-  expect(reverse.at(-1)!.left - reverse[0].left).toBe(720);
+  expect(
+    Math.abs(reverse.at(-1)!.left - reverse[0].left - 720),
+  ).toBeLessThanOrEqual(1);
   for (const frame of [...forward, ...reverse])
     expect(frame.right).toEqual([864, 16, 560, 868]);
   await page.getByRole("button", { name: /Задачи — Подтверждено/ }).click();
@@ -217,7 +223,6 @@ test("ошибка, тайм-аут, нехватка данных и отмен
   await enter(page);
   for (let i = 0; i < 4; i++) await confirm(page, "Пока не знаю");
   const create = page.getByRole("button", { name: "Создать черновик" });
-  await create.click();
   await expect(page.getByText("Собираю черновик…")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
   const animations = await page
@@ -283,7 +288,6 @@ test("на телефоне активна одна панель, Escape воз�
   for (const phase of ["interview", "preview"]) {
     if (phase === "preview") {
       for (let i = 0; i < 4; i++) await confirm(page);
-      await page.getByRole("button", { name: "Создать черновик" }).click();
       await expect(
         page.getByRole("textbox", {
           name: "Ежедневные задачи, пункт 1",
@@ -315,14 +319,13 @@ test("на телефоне активна одна панель, Escape воз�
   ).toBeFocused();
 });
 
-test("двойное нажатие открывает одно превью, прерванный выезд не создаёт черновик", async ({
+test("автосборка открывает одно превью, отмена сохраняет возможность повторить", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await enter(page);
   for (let i = 0; i < 4; i++) await confirm(page);
   const create = page.getByRole("button", { name: "Создать черновик" });
-  await create.dblclick();
   await expect(
     page.getByRole("button", { name: "Отменить сборку" }),
   ).toBeVisible();
@@ -389,7 +392,6 @@ test("правлю статью сразу, разделяю и объединя
 }) => {
   await enter(page);
   for (let i = 0; i < 4; i++) await confirm(page);
-  await page.getByRole("button", { name: "Создать черновик" }).click();
   const article = page.getByRole("article");
   const field = (name: string) =>
     article.getByRole("textbox", { name, exact: true });

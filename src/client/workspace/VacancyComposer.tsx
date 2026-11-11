@@ -28,6 +28,23 @@ export function VacancyComposer({ onExit }: { onExit: () => void }) {
   const cancelButton = useRef<HTMLButtonElement>(null);
   const previewWasOpen = useRef(false);
   const returnStage = useRef(state.stage);
+  const autoOpened = useRef(false);
+
+  useLayoutEffect(() => {
+    if (
+      autoOpened.current ||
+      open ||
+      state.active ||
+      state.result ||
+      !state.answers.every((answer) => answer.confirmed)
+    )
+      return;
+    // Открываю первый черновик один раз. Отмена и ошибка не запускают фоновый повтор.
+    autoOpened.current = true;
+    showPreview();
+    origin.current =
+      right.current?.querySelector<HTMLElement>("#ix-main-action") ?? null;
+  }, [state.answers, state.active, state.result, open]);
 
   useLayoutEffect(() => {
     if (choice) {

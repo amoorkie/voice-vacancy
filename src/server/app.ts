@@ -12,7 +12,13 @@ import {
 import { evaluationPrompt, draftPrompt } from "./prompts.js";
 import { ApiError, completeJson, type ProviderConfig } from "./provider.js";
 import { CallBudget } from "./call-budget.js";
+import {
+  speechAvailable,
+  registerTranscription,
+  type Transcriber,
+} from "./transcription.js";
 export type AppOptions = {
+  transcriber?: Transcriber;
   provider?: ProviderConfig;
   budgetPath?: string;
   maxCalls?: number;
@@ -74,7 +80,12 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "no-referrer");
     reply.header("Cache-Control", "no-store");
-    reply.header("Permissions-Policy", "microphone=(), camera=()");
+    reply.header(
+      "Permissions-Policy",
+      (speechAvailable() || options.transcriber
+        ? "microphone=(self)"
+        : "microphone=()") + ", camera=()",
+    );
     reply.header(
       "Content-Security-Policy",
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
@@ -97,7 +108,14 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
     mode,
     csrfToken: token,
     model: provider?.model ?? null,
+    voice:
+      speechAvailable() || options.transcriber
+        ? "microphone"
+        : mode === "fixtures"
+          ? "fixtures"
+          : "unavailable",
   }));
+  registerTranscription(app, token, options.transcriber);
   app.post<{ Params: { operation: string } }>(
     "/api/:operation",
     async (request, reply) => {
