@@ -23,7 +23,15 @@ test("кабинет, фильтры, пустые состояния и раз�
   await page.getByRole("button", { name: /Продуктовый дизайнер/ }).click();
   await page.getByRole("button", { name: "Все отклики" }).click();
   await expect(page.getByRole("table").first().getByRole("row")).toHaveCount(5);
-  await page.getByLabel("Статус вакансий").selectOption("draft");
+  const status = page.getByRole("combobox", { name: "Статус вакансий" });
+  await status.click();
+  await page.getByRole("option", { name: "Черновики" }).click();
+  await expect(status).toContainText("Черновики");
+  await status.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(status).toBeFocused();
   await expect(
     page.getByRole("heading", { name: "Откликов пока нет" }),
   ).toBeVisible();
@@ -37,7 +45,7 @@ test("кабинет, фильтры, пустые состояния и раз�
   ).toBeVisible();
 });
 
-test("вход в интервью на тестовых данных, подключение и возврат без потери выбора", async ({
+test("вход в интервью и возврат без потери выбранной вакансии", async ({
   page,
 }) => {
   const requests: string[] = [];
@@ -45,23 +53,20 @@ test("вход в интервью на тестовых данных, подк�
   await page.goto("/");
   await page.getByRole("button", { name: /Backend Engineer/ }).click();
   await page.getByRole("button", { name: "Добавить вакансию" }).click();
-  await page.getByRole("button", { name: "Подключить существующую" }).click();
   await expect(
-    page.getByRole("heading", { name: "Подключение вакансий" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "К интервью" }).click();
-  await page.getByRole("button", { name: "Начать интервью" }).click();
-  await page.getByRole("button", { name: "Написать текстом" }).click();
+    page.getByRole("button", { name: "Подключить существующую" }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Демо-данные")).toHaveCount(0);
   await page
-    .getByLabel("Ваш ответ", { exact: true })
+    .getByLabel("Расшифровка", { exact: true })
     .fill("Поддерживать интеграции");
   await page.getByRole("button", { name: "В кабинет" }).click();
-  await page.getByRole("button", { name: "Оставить как есть" }).click();
-  await expect(page.getByLabel("Ваш ответ", { exact: true })).toHaveValue(
+  await page.getByRole("button", { name: "Остаться" }).click();
+  await expect(page.getByLabel("Расшифровка", { exact: true })).toHaveValue(
     "Поддерживать интеграции",
   );
   await page.getByRole("button", { name: "В кабинет" }).click();
-  await page.getByRole("button", { name: "Продолжить", exact: true }).click();
+  await page.getByRole("button", { name: "Выйти", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Backend Engineer" }),
   ).toBeVisible();
@@ -72,7 +77,7 @@ test("вход в интервью на тестовых данных, подк�
     requests.filter(
       (url) =>
         new URL(url).origin !== new URL(page.url()).origin ||
-        url.includes("/api/"),
+        (url.includes("/api/") && !url.endsWith("/api/config")),
     ),
   ).toEqual([]);
 });
@@ -94,7 +99,7 @@ test("на телефоне открываю список вакансий, вы
   await menu.click();
   await page.getByRole("button", { name: "Добавить вакансию" }).click();
   await expect(
-    page.getByRole("button", { name: "Начать интервью" }),
+    page.getByRole("button", { name: "Начать запись" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "В кабинет" }).click();
   await expect(menu).toBeFocused();

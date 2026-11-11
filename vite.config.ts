@@ -1,8 +1,9 @@
-// Vite обслуживает только локальную разработку; секреты и внешние API не подключены.
+// Базовый путь позволяет собирать тот же интерфейс для корня или раздела на сервере.
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 export default defineConfig({
+  base: process.env.APP_BASE_PATH ?? "/",
   plugins: [tailwindcss()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {

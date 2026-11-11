@@ -1,0 +1,28 @@
+# Отдельный процесс прототипа. Секреты читает systemd из закрытого файла.
+[Unit]
+Description=Iskra Voice Vacancy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=voice-vacancy
+Group=voice-vacancy
+WorkingDirectory=/var/www/voice-vacancy/current
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/voice-vacancy/app.env
+ExecStart=/opt/voice-vacancy/node-v26.13.0-linux-x64/bin/node dist/server/server/main.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+StateDirectory=voice-vacancy
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/voice-vacancy
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

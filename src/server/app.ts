@@ -35,7 +35,8 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
   const token = randomBytes(32).toString("hex");
   const budget = provider
     ? new CallBudget(
-        options.budgetPath ?? resolve(".local/api-budget.json"),
+        options.budgetPath ??
+          (process.env.AI_BUDGET_PATH || resolve(".local/api-budget.json")),
         options.maxCalls ?? Number(process.env.AI_MAX_CALLS ?? 20),
       )
     : undefined;
@@ -55,6 +56,17 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
     "http://127.0.0.1:4316",
     "http://localhost:4316",
   ]);
+  // Публичный origin задаётся владельцем в env. Адрес запроса не расширяет разрешённый список.
+  if (process.env.PUBLIC_ORIGIN) {
+    const publicUrl = new URL(process.env.PUBLIC_ORIGIN);
+    if (
+      publicUrl.protocol !== "https:" ||
+      publicUrl.origin !== process.env.PUBLIC_ORIGIN
+    )
+      throw new Error("PUBLIC_ORIGIN должен содержать только HTTPS origin");
+    hosts.add(publicUrl.host);
+    origins.add(publicUrl.origin);
+  }
   let active = false;
   let recent: number[] = [];
   app.addHook("onClose", async () => budget?.close());
@@ -71,12 +83,10 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
       !hosts.has(request.headers.host ?? "") ||
       (request.headers.origin && !origins.has(request.headers.origin))
     )
-      return reply
-        .code(403)
-        .send({
-          code: "origin-denied",
-          message: "Недопустимый адрес запроса.",
-        });
+      return reply.code(403).send({
+        code: "origin-denied",
+        message: "Недопустимый адрес запроса.",
+      });
   });
   app.get("/health", async () => ({
     status: "ok",
@@ -97,39 +107,31 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
         !budget ||
         !["completeness", "vacancy"].includes(operation)
       )
-        return reply
-          .code(503)
-          .send({
-            code: "integration-disabled",
-            message: "Эта обработка пока не подключена. Ваш текст сохранён.",
-          });
+        return reply.code(503).send({
+          code: "integration-disabled",
+          message: "Эта обработка пока не подключена. Ваш текст сохранён.",
+        });
       if (!request.headers.origin || request.headers["x-demo-token"] !== token)
-        return reply
-          .code(403)
-          .send({
-            code: "origin-denied",
-            message: "Обновите страницу перед запросом.",
-          });
+        return reply.code(403).send({
+          code: "origin-denied",
+          message: "Обновите страницу перед запросом.",
+        });
       const isEvaluation = operation === "completeness";
       const parsed = isEvaluation
         ? evaluationRequest.safeParse(request.body)
         : draftRequest.safeParse(request.body);
       if (!parsed.success)
-        return reply
-          .code(400)
-          .send({
-            code: "invalid-input",
-            message: "Проверьте длину и подтверждение ответов.",
-          });
+        return reply.code(400).send({
+          code: "invalid-input",
+          message: "Проверьте длину и подтверждение ответов.",
+        });
       const input = parsed.data;
       recent = recent.filter((t) => Date.now() - t < 60000);
       if (active || recent.length >= 6)
-        return reply
-          .code(429)
-          .send({
-            code: "rate-limited",
-            message: "Подождите завершения запроса или повторите через минуту.",
-          });
+        return reply.code(429).send({
+          code: "rate-limited",
+          message: "Подождите завершения запроса или повторите через минуту.",
+        });
       try {
         budget.reserve(input.requestId);
       } catch (error) {
@@ -191,23 +193,19 @@ export function createApp(serveStatic = true, options: AppOptions = {}) {
         };
       } catch (error) {
         if (controller.signal.aborted)
-          return reply
-            .code(504)
-            .send({
-              code: "timeout",
-              message:
-                "Ожидание завершено. Ваш текст сохранён; можно повторить вручную.",
-            });
+          return reply.code(504).send({
+            code: "timeout",
+            message:
+              "Ожидание завершено. Ваш текст сохранён; можно повторить вручную.",
+          });
         if (error instanceof ApiError)
           return reply
             .code(error.status)
             .send({ code: error.code, message: error.message });
-        return reply
-          .code(502)
-          .send({
-            code: "invalid-provider-output",
-            message: "Не удалось проверить ответ сервиса. Ваш текст сохранён.",
-          });
+        return reply.code(502).send({
+          code: "invalid-provider-output",
+          message: "Не удалось проверить ответ сервиса. Ваш текст сохранён.",
+        });
       } finally {
         clearTimeout(timer);
         request.raw.off("aborted", disconnect);

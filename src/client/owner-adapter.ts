@@ -52,7 +52,7 @@ export function runOwnerApi(
   void (async () => {
     try {
       const response = await fetch(
-        `/api/${isEvaluation ? "completeness" : "vacancy"}`,
+        `${import.meta.env.BASE_URL}api/${isEvaluation ? "completeness" : "vacancy"}`,
         {
           method: "POST",
           headers: {

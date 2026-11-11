@@ -1,12 +1,11 @@
 // Первый экран и связанный тестовый путь: ввод, проверка, сводка и редактор результата.
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   MAX_TEXT,
   sectionIds,
   sectionNames,
   textLength,
   validText,
-  type OperationKind,
   type Outcome,
 } from "../contracts/interview";
 import {
@@ -15,9 +14,7 @@ import {
   vagueAnswer,
   followUpAnswer,
 } from "../domain/fixtures";
-import { initialSession, resultStale, sessionReducer } from "../domain/session";
-import { runFixture } from "./fixture-adapter";
-import { runOwnerApi, type RuntimeConfig } from "./owner-adapter";
+import { resultStale } from "../domain/session";
 import { downloadText, summaryText, vacancyText } from "./export";
 import {
   MicrophoneIcon,
@@ -29,6 +26,7 @@ import {
   StopIcon,
   CircleNotchIcon,
 } from "@phosphor-icons/react";
+import { useInterviewSession } from "./interview/useInterviewSession";
 import { ProgressRing } from "./ProgressRing";
 
 /** Библиотечные иконки сохраняют единый рисунок; смысл действий есть в текстовых подписях. */
@@ -106,34 +104,19 @@ function ConfirmDialog({
 }
 
 /** Соединяет доменные события с UI; тестовый адаптер запускается только для активной попытки. */
-export function App({
-  demo = false,
-  onExit,
-  onConnect,
-}: {
-  demo?: boolean;
-  onExit?: () => void;
-  onConnect?: () => void;
-}) {
-  const [runtime, setRuntime] = useState<RuntimeConfig | undefined>(() =>
-    demo ? { mode: "fixtures", csrfToken: "", model: null } : undefined,
-  );
+export function App() {
+  const { state, dispatch, runtime, seconds, start, copy } =
+    useInterviewSession(false);
   const live = runtime?.mode === "api";
-  const [state, dispatch] = useReducer(sessionReducer, undefined, () =>
-    initialSession(),
-  );
   const [modal, setModal] = useState<{
     title: string;
     text: string;
     run: () => void;
   }>();
   const [supplement, setSupplement] = useState<string | null>(null);
-  const [seconds, setSeconds] = useState(0);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
-  const latest = useRef(state);
-  latest.current = state;
   const answer = state.answers[state.index];
   const topic = topics[state.index];
   const active = state.active;
@@ -169,79 +152,11 @@ export function App({
   }, [editingIndex, state.index]);
 
   useEffect(() => {
-    if (demo) return;
-    const controller = new AbortController();
-    void fetch("/api/config", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Нет конфигурации");
-        const config = await response.json();
-        if (
-          !["fixtures", "api", "unavailable"].includes(config.mode) ||
-          typeof config.csrfToken !== "string"
-        )
-          throw new Error("Неверная конфигурация");
-        setRuntime(config);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setRuntime({ mode: "unavailable", csrfToken: "", model: null });
-      });
-    return () => controller.abort();
-  }, [demo]);
-
-  useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
     setSupplement(null);
     setEditingIndex(null);
   }, [state.stage, state.index]);
-  useEffect(() => {
-    if (active?.phase !== "waiting") return;
-    if (!runtime) return;
-    if (active.kind === "transcription" || runtime.mode === "fixtures")
-      return runFixture(active, latest.current, dispatch);
-    return runOwnerApi(active, latest.current, runtime, dispatch);
-  }, [active?.id, active?.phase, runtime]);
-  useEffect(() => {
-    if (!recording) {
-      setSeconds(0);
-      return;
-    }
-    const start = performance.now();
-    const timer = window.setInterval(() => {
-      const elapsed = Math.floor((performance.now() - start) / 1000);
-      setSeconds(elapsed);
-      if (elapsed >= 120) dispatch({ type: "stop" });
-    }, 250);
-    return () => window.clearInterval(timer);
-  }, [recording]);
-  useEffect(() => {
-    // Скрытие вкладки отменяет именно имитацию записи: никаких скрытых отправок нет.
-    const hide = () => {
-      if (document.hidden && latest.current.active?.phase === "recording")
-        dispatch({ type: "cancel" });
-    };
-    document.addEventListener("visibilitychange", hide);
-    return () => document.removeEventListener("visibilitychange", hide);
-  }, []);
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (latest.current.answers.some((a) => a.text)) event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
-
-  /** Запускает выбранную обработку; голос пока остаётся явной имитацией. */
-  function start(kind: OperationKind, append = false) {
-    dispatch({
-      type: "start",
-      id: crypto.randomUUID(),
-      kind,
-      append,
-      recording: kind === "transcription",
-    });
-  }
   /** Просит согласие перед заменой уже введённого материала. */
   function replaceText(text: string) {
     const run = () => {
@@ -256,18 +171,6 @@ export function App({
         run,
       });
     else run();
-  }
-  /** Сохраняет текст при невозможности использовать системный буфер. */
-  async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      dispatch({ type: "message", text: "Текст скопирован." });
-    } catch {
-      dispatch({
-        type: "message",
-        text: "Не удалось скопировать. Скачайте .txt или выделите текст на экране.",
-      });
-    }
   }
   /** Повторная генерация не может молча заменить ручные правки. */
   function generate() {
@@ -303,36 +206,16 @@ export function App({
     else dispatch({ type: "review" });
   }
 
-  /** Сеанс уничтожается при выходе в кабинет, поэтому сначала защищаю уже собранный текст. */
-  function leave(destination: () => void) {
-    if (active || state.result || state.answers.some((a) => a.text.trim())) {
-      setModal({
-        title: "Выйти из интервью?",
-        text: "Ответы и правки в этой вкладке будут удалены. Можно остаться и скачать текст.",
-        run: destination,
-      });
-    } else destination();
-  }
-
   return (
     <div className="app-shell">
       <header className="site-header">
-        {onExit ? (
-          <button
-            className="text-button workspace-return"
-            onClick={() => leave(onExit)}
-          >
-            <Icon name="back" />В кабинет
-          </button>
-        ) : (
-          <a
-            className="brand"
-            href="#main"
-            aria-label="Voice Vacancy, перейти к содержимому"
-          >
-            voice vacancy
-          </a>
-        )}
+        <a
+          className="brand"
+          href="#main"
+          aria-label="Voice Vacancy, перейти к содержимому"
+        >
+          voice vacancy
+        </a>
         <span className="header-purpose">Создание вакансии</span>
         {state.stage !== "intro" && (
           <button className="text-button finish-button" onClick={review}>
@@ -356,7 +239,12 @@ export function App({
             <div className="intro-ring">
               <ProgressRing completed={0} compact>
                 <span className="glass-surface">
-                  <img src="/assets/microphone-glass.png" alt="" />
+                  <img
+                    src={
+                      import.meta.env.BASE_URL + "assets/microphone-glass.png"
+                    }
+                    alt=""
+                  />
                 </span>
                 <Icon name="mic" />
               </ProgressRing>
@@ -368,16 +256,6 @@ export function App({
             >
               Начать интервью <Icon name="arrow" />
             </button>
-            {onConnect && (
-              <div>
-                <button
-                  className="text-button"
-                  onClick={() => leave(onConnect)}
-                >
-                  Подключить существующую
-                </button>
-              </div>
-            )}
             <p className="intro-note">
               Можно отвечать текстом. Если чего-то не знаете — так и напишите.
             </p>
@@ -489,7 +367,10 @@ export function App({
                       >
                         <span className="glass-surface">
                           <img
-                            src="/assets/microphone-glass.png"
+                            src={
+                              import.meta.env.BASE_URL +
+                              "assets/microphone-glass.png"
+                            }
                             alt=""
                             draggable="false"
                           />

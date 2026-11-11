@@ -8,6 +8,8 @@
 2. Из спеки вывожу [план](specs/005-iskra-workspace/plan.md). В начале плана связываю требования с [JTBD](product/jtbd.md), [пользовательским флоу](product/user-flow.md) и исключениями. Дальше описываю компоненты, данные, работу двух панелей и критерии проверки.
 3. По плану составляю [задачи](specs/005-iskra-workspace/tasks.md). Для каждого PR видно, из каких решений плана он вытекает и какой результат можно проверить.
 
+Готовый путь от кабинета до черновика я показываю в [записи открытия двух панелей и отчёте](verification/005-iskra-panels-b.md).
+
 Базовые функции интервью описаны в [реестре спецификаций](specs/README.md), [общих правилах](specs/shared-rules.md) и [карте проверки](specs/coverage.md). По ним составлены [общий технический план](technical/plan.md), [задачи](technical/tasks.md), [оценка сервисов и бюджета](technical/services-and-budget.md) и [контракт данных](technical/data-and-api.md).
 
 Порядок работы описан в [процессе SDD](process/spec-driven-development.md). Дополнительные материалы — [границы продукта](product/scope-and-decisions.md), [план проверки гипотез](product/validation-plan.md), [решение об устройстве репозитория](decisions/0001-spec-driven-foundation.md), [журнал](process/ai-worklog.md) и [комплект сдачи](delivery/roadmap.md).

@@ -5,12 +5,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 /** Начинает новый сеанс через видимое объяснение ограничений. */
 async function begin(page: Page, edit = true) {
-  await page.goto("/");
-  if (
-    !(await page.getByRole("button", { name: "Добавить вакансию" }).isVisible())
-  )
-    await page.getByRole("button", { name: "Открыть список вакансий" }).click();
-  await page.getByRole("button", { name: "Добавить вакансию" }).click();
+  await page.goto("/?view=interview");
   await page.getByRole("button", { name: "Начать интервью" }).click();
   if (edit) await openEditor(page);
 }
@@ -235,12 +230,7 @@ test("доступность и клавиатура на начале, вопр
   page,
 }, testInfo) => {
   test.setTimeout(60000);
-  await page.goto("/");
-  if (
-    !(await page.getByRole("button", { name: "Добавить вакансию" }).isVisible())
-  )
-    await page.getByRole("button", { name: "Открыть список вакансий" }).click();
-  await page.getByRole("button", { name: "Добавить вакансию" }).click();
+  await page.goto("/?view=interview");
   await page.screenshot({
     path: testInfo.outputPath("intro.png"),
     fullPage: true,

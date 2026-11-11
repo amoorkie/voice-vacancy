@@ -1,0 +1,906 @@
+/* Портал Sheet находится вне оболочки кабинета. Базовое оформление сохраняет утилиты shadcn. */
+@layer base {
+  .composer-host :where(*, *::before, *::after) {
+    border: 0 solid #dedfdd;
+    box-sizing: border-box;
+  }
+  .composer-host :where(button, textarea, select) {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+  .composer-host button,
+  .composer-host summary {
+    cursor: pointer;
+  }
+  .composer-host :where(h2, h3, p, blockquote) {
+    margin: 0;
+  }
+}
+[data-slot="sheet-content"].composer-host {
+  display: block;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  transition: none;
+  pointer-events: none !important;
+  font:
+    14px/1.45 "Inter Variable",
+    Arial,
+    sans-serif;
+  color: #1e2022;
+}
+body:has(.composer-host) [data-slot="sheet-overlay"] {
+  background: rgb(33 37 43 / 28%);
+}
+.composer-host :focus-visible {
+  outline: 2px solid #4b5c5b;
+  outline-offset: 2px;
+}
+.ix-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #dedfdf;
+  border-radius: 24px;
+  pointer-events: auto;
+}
+.ix-interview {
+  position: absolute;
+  inset: 16px 16px 16px auto;
+  width: min(560px, calc(100% - 32px));
+  box-shadow: 0 12px 44px #181c2924;
+  animation: ix-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ix-enter {
+  from {
+    transform: translateX(calc(100% + 16px));
+  }
+  to {
+    transform: none;
+  }
+}
+/* Маска заканчивается под правой панелью. Двигается только её дочерний слой. */
+.ix-mask {
+  position: absolute;
+  inset: 16px 560px 16px auto;
+  width: min(720px, calc(100% - 576px));
+  overflow: clip;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear 320ms;
+}
+.ix-mask[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.ix-preview {
+  height: 100%;
+  padding-right: 16px;
+  transform: translateX(100%);
+  transition: transform 320ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+.ix-mask[data-open="true"] .ix-preview {
+  transform: translateX(0);
+}
+.ix-pane[inert] {
+  pointer-events: none;
+}
+.ix-head,
+.ix-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 26px;
+}
+.ix-head {
+  border-bottom: 1px solid #e6e7e6;
+}
+.ix-head h2 {
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.045em;
+  font-weight: 650;
+}
+.ix-head h2:focus {
+  outline: 0;
+}
+.ix-head [data-size="icon"] {
+  border-radius: 50%;
+  background: #f2f3f3;
+}
+.ix-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 20px 26px;
+  scrollbar-gutter: stable;
+}
+.ix-foot {
+  border-top: 1px solid #e6e7e6;
+  background: #fff;
+}
+.ix-voice {
+  display: grid;
+  justify-items: center;
+  row-gap: 2px;
+  padding: 0 0 16px;
+}
+.ix-voice .ix-action-label {
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+.ix-question p,
+.ix-answer-row span,
+.ix-notice p {
+  color: #5b6066;
+}
+.ix-voice .progress-orbit {
+  position: relative;
+  width: clamp(158px, 22vh, 216px);
+  aspect-ratio: 1;
+  margin-bottom: 7px;
+}
+.ix-voice .progress-segments {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* Деления растут от внутреннего края кольца. Задержка задаёт бегущий фронт каждой четверти. */
+.ix-voice .progress-segment {
+  stroke: #a2a9ac;
+  stroke-width: 4.3;
+  stroke-linecap: round;
+  transform-origin: 200px 34px;
+  transition:
+    transform 380ms cubic-bezier(0.23, 1.55, 0.35, 1) var(--segment-delay),
+    stroke 220ms ease var(--segment-delay);
+}
+.ix-voice .progress-segment.is-filled {
+  stroke: #268750;
+  transform: scaleY(2.95);
+}
+.ix-voice .is-recording .progress-segment:not(.is-filled) {
+  animation: ix-scan 1.68s ease-in-out var(--scan-lag) infinite;
+}
+@keyframes ix-scan {
+  0%,
+  32%,
+  100% {
+    transform: scaleY(1);
+    stroke: #a2a9ac;
+  }
+  12% {
+    transform: scaleY(2.35);
+    stroke: #5c7480;
+  }
+}
+.ix-voice .orbit-center {
+  position: absolute;
+  inset: 19%;
+  display: grid;
+  place-items: stretch;
+}
+/* Полупрозрачная поверхность и тонкая рамка связывают кнопку с делениями кольца. */
+.ix-glass {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid #d7e0da;
+  background: linear-gradient(145deg, #fff 10%, #f6f8f6 48%, #e8eee9 100%);
+  box-shadow:
+    inset 0 1px 2px #fff,
+    0 5px 18px #344b3c0d;
+  transition:
+    transform 200ms,
+    background-color 250ms,
+    border-color 250ms;
+}
+.ix-glass svg {
+  width: 30%;
+  height: 30%;
+  color: #42574b;
+  stroke-width: 1.5;
+}
+.ix-glass[data-complete="true"] {
+  border-color: #c4d9cb;
+  background: linear-gradient(145deg, #fcfefc, #edf5ef);
+}
+.ix-glass[data-complete="true"] svg {
+  color: #376549;
+}
+.ix-glass:hover:not([aria-disabled="true"]) {
+  transform: scale(1.025);
+  border-color: #a5b9ac;
+}
+.ix-voice .is-recording .ix-glass {
+  animation: ix-pulse 1.45s ease-in-out infinite alternate;
+}
+@keyframes ix-pulse {
+  to {
+    box-shadow:
+      inset 0 1px 2px #fff,
+      0 0 0 5px #dcebe15c,
+      0 5px 22px #7ca48d26;
+  }
+}
+/* Четыре темы занимают одну строку. Переливание относится только к выбранной теме. */
+.ix-topics {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.8fr) minmax(0, 1.25fr) minmax(0, 1.4fr)
+    minmax(0, 0.8fr);
+  gap: 5px;
+  margin: 0 0 24px;
+}
+.ix-topics button {
+  min-width: 0;
+  border-radius: 99px;
+  padding: 0;
+}
+.ix-topics [data-slot="badge"] {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #dce1df;
+  border-radius: 99px;
+  background: #f7f8f7;
+  color: #59625f;
+  font-size: 11px;
+  font-weight: 500;
+  transition:
+    background-color 250ms,
+    border-color 250ms,
+    color 250ms;
+}
+.ix-topics [data-active="true"] {
+  background: #edf2f4;
+  border-color: #a8bbbf;
+  color: #293f43;
+}
+.ix-topics [data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    #fff 48%,
+    transparent 75%
+  );
+  transform: translateX(-110%);
+  animation: ix-topic-light 4.5s ease-in-out infinite;
+}
+@keyframes ix-topic-light {
+  50%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+.ix-topics [data-done="true"] {
+  background: #edf5ef;
+  color: #2b603e;
+  border-color: #cbded2;
+}
+.ix-topics [data-done="true"] svg {
+  animation: ix-topic-check 350ms ease-out;
+}
+@keyframes ix-topic-check {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ix-topic-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.ix-topics [data-slot="badge"] svg {
+  flex-shrink: 0;
+}
+.ix-topic-short {
+  display: none;
+}
+@media (max-width: 479px) {
+  .ix-topics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .ix-topic-full {
+    display: none;
+  }
+  .ix-topic-short {
+    display: inline;
+  }
+  .ix-topics [data-slot="badge"] {
+    font-size: 11px;
+  }
+}
+.ix-question h3,
+.ix-review h3,
+.ix-prompt h3 {
+  font-size: 21px;
+  line-height: 1.22;
+  letter-spacing: -0.035em;
+  font-weight: 640;
+}
+.ix-question p {
+  margin: 6px 0 14px;
+  font-size: 13px;
+}
+.ix-label,
+.ix-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ix-label {
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ix-label label,
+.ix-answer-row strong {
+  font-size: 14px;
+  font-weight: 620;
+}
+.ix-pane textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #fafbfc;
+  field-sizing: content;
+  border: 1px solid #cdd1d5;
+}
+.ix-editor > .ix-actions {
+  margin-top: 8px;
+}
+.ix-feedback,
+.ix-fragment,
+.ix-notice {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: #f4f5f6;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.ix-fragment p,
+.ix-notice p {
+  margin: 6px 0;
+}
+.ix-review h3 {
+  margin-bottom: 8px;
+}
+.ix-answer-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7e8;
+}
+.ix-answer-row:hover {
+  background: #fafafa;
+}
+.ix-answer-row span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ix-prompt-back {
+  z-index: 3;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #22262c40;
+  pointer-events: auto;
+}
+.ix-prompt {
+  background: white;
+  padding: 24px;
+  border-radius: 18px;
+  max-width: 400px;
+  box-shadow: 0 14px 48px #151b242b;
+}
+.ix-prompt p {
+  margin: 10px 0 18px;
+}
+@media (max-width: 1199px) {
+  .ix-mask {
+    right: 16px;
+    width: min(560px, calc(100% - 32px));
+    z-index: 1;
+  }
+  .ix-preview {
+    padding-right: 0;
+  }
+  .ix-interview[data-covered="true"] {
+    visibility: hidden;
+  }
+}
+@media (max-width: 639px) {
+  .ix-interview,
+  .ix-mask {
+    inset: 0;
+    width: 100%;
+  }
+  .ix-pane {
+    border-radius: 0;
+    border: 0;
+  }
+  .ix-scroll {
+    padding: 16px;
+  }
+  .ix-head,
+  .ix-foot {
+    padding: 12px 16px;
+  }
+  .ix-foot {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+  }
+  .ix-topics {
+    margin-bottom: 16px;
+  }
+  .ix-question h3 {
+    font-size: 19px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-host *,
+  .composer-host *::before,
+  .composer-host *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Закрытое для ввода интервью удерживает повторный клик внутри диалога. */
+@media (min-width: 1200px) {
+  .ix-interview-shield {
+    position: absolute;
+    inset: 16px 16px 16px auto;
+    width: 560px;
+    border-radius: 24px;
+    pointer-events: auto;
+  }
+}
+.ix-voice .ix-action-label {
+  font-weight: 600;
+}
+
+/* В разложенном виде внутренний торец превью уходит под интервью. */
+@media (min-width: 1200px) {
+  .ix-preview {
+    border-radius: 24px 0 0 24px;
+    border-right: 0;
+  }
+}
+.ix-voice small,
+.ix-foot small {
+  color: #5b6066;
+  font-size: 12px;
+}
+.ix-interview .ix-question {
+  text-align: center;
+  margin: 0 auto 12px;
+  max-width: 460px;
+}
+.ix-interview .ix-question h3 {
+  font-weight: 620;
+  letter-spacing: -0.035em;
+}
+.ix-interview .ix-question p {
+  margin: 6px 0;
+}
+.ix-voice .ix-fragment {
+  width: 100%;
+  text-align: left;
+}
+/* Шапка берёт тёмный фон, медное свечение и четырёхлучевую искру с присланного референса. */
+.ix-document {
+  color: #202527;
+  max-width: 70ch;
+  margin: 0 auto 28px;
+  overflow-wrap: anywhere;
+}
+/* Каркас занимает место будущей вакансии. Статус и отмена доступны независимо от анимации. */
+.ix-loading {
+  max-width: 70ch;
+  margin: 0 auto 28px;
+}
+.ix-loading-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 20px;
+}
+.ix-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #515955;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ix-loading-symbol {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #976234;
+  background: #f6efe7;
+}
+.ix-loading-symbol svg {
+  width: 16px;
+  height: 16px;
+  animation: ix-loading-turn 1.8s linear infinite;
+}
+@keyframes ix-loading-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ix-loading-toolbar [data-slot="button"] {
+  color: #5b6460;
+  font-size: 12px;
+}
+.ix-loading-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.ix-skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: 11px;
+  border-radius: 4px;
+  background: #eef0ee;
+}
+.ix-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    #ffffffa6 50%,
+    transparent 85%
+  );
+  transform: translateX(-100%);
+  animation: ix-loading-light 2.6s ease-in-out infinite;
+}
+@keyframes ix-loading-light {
+  70%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+.ix-loading-cover .ix-skeleton {
+  background: #ffefdc26;
+}
+.ix-loading-cover .ix-skeleton::after {
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    #fff1dd26 50%,
+    transparent 85%
+  );
+}
+.ix-skeleton-cover-title {
+  width: 76%;
+  height: 25px;
+  margin-top: 8px;
+}
+.ix-skeleton-cover-line {
+  width: 43%;
+}
+.ix-loading-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 30px;
+}
+.ix-skeleton-heading {
+  width: 32%;
+  height: 15px;
+  margin-bottom: 4px;
+  background: #e5e9e5;
+}
+.ix-skeleton-short {
+  width: 68%;
+}
+.ix-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 22px 24px 17px;
+  min-height: 155px;
+  color: #fffaf3;
+  background-color: #0e0f0e;
+  background-image:
+    linear-gradient(100deg, #0d0e0ee8 0%, #11100d94 46%, transparent 83%),
+    radial-gradient(
+      ellipse at 84% 135%,
+      #ffb339 1%,
+      #ff7500 24%,
+      #a43e00 40%,
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse at 67% -52%,
+      #bd6b13 0%,
+      #5c310c 29%,
+      transparent 61%
+    ),
+    linear-gradient(130deg, #0c0e0d, #211509 70%, #4e2202);
+}
+.ix-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/assets/cover-grain.png") repeat;
+  mix-blend-mode: soft-light;
+  opacity: 0.2;
+}
+.ix-cover::after {
+  content: "✦";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  right: -0.05em;
+  bottom: -0.33em;
+  color: rgb(65 19 5 / 22%);
+  font:
+    190px/1 Georgia,
+    serif;
+}
+.ix-cover-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff2de;
+  font-size: 12px;
+  font-weight: 550;
+}
+.ix-cover-brand span {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid #b99e775e;
+  border-radius: 6px;
+  font:
+    18px/1 Georgia,
+    serif;
+}
+.ix-cover h3 {
+  margin: 19px 0 4px;
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.13;
+  font-weight: 650;
+  letter-spacing: -0.05em;
+}
+.ix-document section {
+  margin: 22px 0 0;
+}
+.ix-section-title {
+  position: relative;
+  padding-right: 34px;
+  margin-bottom: 6px;
+}
+.ix-document h4 {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.ix-undo {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  color: #596268;
+}
+.ix-cover .ix-undo {
+  top: 14px;
+  right: 15px;
+  color: white;
+  background: rgb(0 0 0 / 38%);
+}
+.ix-document ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 22px;
+}
+.ix-document li::marker {
+  color: #838983;
+}
+.ix-document li + li {
+  margin-top: 2px;
+}
+.ix-document [data-section="clarifications"] {
+  border-top: 1px solid #dedfdd;
+  padding-top: 17px;
+}
+
+/* Нативные поля растут вместе с текстом. В покое они образуют заголовок, абзацы и обычный список. */
+.ix-document textarea.ix-inline-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1lh;
+  max-width: 100%;
+  field-sizing: content;
+  resize: none;
+  overflow: hidden;
+  cursor: text;
+  padding: 0 2px;
+  margin-left: -2px;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 3px;
+  box-shadow: none;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: inherit;
+}
+.ix-document textarea.ix-role-title {
+  font: inherit;
+  letter-spacing: inherit;
+}
+.ix-document textarea.ix-role-conditions {
+  font-size: 14px;
+  color: #fff9ee;
+}
+.ix-document textarea::placeholder {
+  color: #687075;
+  opacity: 1;
+}
+.ix-cover textarea::placeholder {
+  color: #f8e5d1;
+}
+.ix-document textarea:hover {
+  background: rgb(91 100 109 / 6%);
+}
+.ix-document textarea:focus {
+  outline: 2px solid #637a79;
+  outline-offset: 3px;
+  background: #f5f8f7;
+}
+.ix-cover textarea:hover,
+.ix-cover textarea:focus {
+  background: rgb(8 6 5 / 42%);
+}
+.ix-cover textarea:focus {
+  outline-color: #d6e3df;
+}
+@media (max-width: 639px) {
+  .ix-cover {
+    padding: 17px 18px 13px;
+    min-height: 140px;
+  }
+  .ix-cover h3 {
+    margin-top: 17px;
+  }
+}
+.ix-action-label {
+  cursor: pointer;
+}
+.ix-answer-status {
+  margin-left: 7px;
+  font-size: 12px;
+  color: #656a6c;
+}
+.ix-preview .ix-head .ix-actions {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.ix-pane [aria-disabled="true"] {
+  cursor: default;
+}
+@media (max-width: 479px) {
+  .ix-preview .ix-head h2 {
+    font-size: 18px;
+  }
+  .ix-preview .ix-foot > .ix-actions {
+    flex-wrap: nowrap;
+  }
+  .ix-preview .ix-foot {
+    column-gap: 4px;
+  }
+  .ix-preview .ix-foot [data-slot="button"] {
+    gap: 4px;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+  .ix-preview .ix-head .ix-actions [data-size="sm"] {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+}
+
+/* В интервью оставляю только закрытие. Начальный фокус доступен диктору без видимой рамки. */
+.ix-interview-head {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: 18px 24px 0;
+}
+.ix-interview-head [data-slot="button"] {
+  border-radius: 50%;
+  background: #f2f4f3;
+}
+.ix-interview-head h2:focus,
+.ix-question h3:focus,
+.ix-review h3:focus {
+  outline: none;
+}
+.ix-interview .ix-scroll {
+  padding-top: 6px;
+}
+.ix-interview .ix-voice {
+  padding-bottom: 24px;
+}
+.ix-interview .progress-orbit {
+  width: clamp(190px, 28vh, 244px);
+}
+.ix-interview .ix-question {
+  margin-bottom: 22px;
+}
+.ix-interview-foot,
+.ix-preview .ix-foot {
+  justify-content: flex-end;
+}
+.ix-pane textarea:focus-visible {
+  box-shadow: none;
+}
+.composer-host ::selection {
+  background: #3e5554;
+  color: #fff;
+}
+@media (max-width: 639px) {
+  .ix-interview-head {
+    padding: 12px 16px 0;
+  }
+}

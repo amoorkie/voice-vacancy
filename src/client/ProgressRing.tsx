@@ -10,6 +10,7 @@ export function ProgressRing({
   children,
   recording = false,
   compact = false,
+  scan = false,
   initialCompleted = completed,
 }: {
   completed: number;
@@ -17,6 +18,7 @@ export function ProgressRing({
   children: ReactNode;
   recording?: boolean;
   compact?: boolean;
+  scan?: boolean;
   initialCompleted?: number;
 }) {
   const [shown, setShown] = useState(initialCompleted);
@@ -57,21 +59,28 @@ export function ProgressRing({
             index < Math.max(previous, count);
           const order =
             count > previous ? index - previous : previous - index - 1;
+          // Внешняя группа задаёт угол. Деление растёт вдоль собственной оси независимо от этого угла.
           return (
-            <line
+            <g
               key={index}
-              x1="200"
-              y1="9"
-              x2="200"
-              y2="21"
               transform={`rotate(${index * (360 / SEGMENTS)} 200 200)`}
-              className={`progress-segment ${index < count ? "is-filled" : ""}`}
-              style={
-                {
-                  "--segment-delay": `${changed ? Math.max(0, order) * 22 : 0}ms`,
-                } as CSSProperties
-              }
-            />
+            >
+              <line
+                x1="200"
+                y1={scan ? 26 : 9}
+                x2="200"
+                y2={scan ? 34 : 21}
+                className={`progress-segment ${index < count ? "is-filled" : ""}`}
+                style={
+                  {
+                    "--segment-delay": `${changed ? Math.max(0, order) * 22 : 0}ms`,
+                    ...(scan && {
+                      "--scan-lag": `${index * 28 - SEGMENTS * 28}ms`,
+                    }),
+                  } as CSSProperties
+                }
+              />
+            </g>
           );
         })}
       </svg>

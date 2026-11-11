@@ -69,8 +69,8 @@ export type Action =
   | { type: "cancel" }
   | { type: "message"; text: string }
   | { type: "failure"; id: string; text: string }
-  | { type: "transcript"; id: string; text: string }
-  | { type: "apply-transcript" }
+  | { type: "transcript"; id: string; text: string; fillEmpty?: boolean }
+  | { type: "apply-transcript"; append?: boolean }
   | { type: "evaluation"; id: string; value: Evaluation | null }
   | { type: "generated"; id: string; value: Draft | "insufficient" | null }
   | { type: "edit-result"; section: SectionId; text: string }
@@ -250,26 +250,30 @@ export function sessionReducer(state: Session, action: Action): Session {
       return attemptCurrent(state, action.id)
         ? { ...state, active: undefined, message: action.text }
         : state;
-    case "transcript":
-      return attemptCurrent(state, action.id)
-        ? {
-            ...state,
-            active: {
-              ...state.active!,
-              phase: "candidate",
-              candidate: action.text,
-            },
-          }
-        : state;
+    case "transcript": {
+      if (!attemptCurrent(state, action.id)) return state;
+      // В пустое поле кабинета первый фрагмент попадает сразу. Подтверждение остаётся отдельным действием.
+      if (action.fillEmpty && !state.answers[state.index].text)
+        return editAnswer(state, state.index, action.text);
+      return {
+        ...state,
+        active: {
+          ...state.active!,
+          phase: "candidate",
+          candidate: action.text,
+        },
+      };
+    }
     case "apply-transcript": {
       const a = state.active;
       if (!a || a.phase !== "candidate" || !attemptCurrent(state, a.id))
         return state;
-      const text = a.append
-        ? [state.answers[state.index].text, a.candidate]
-            .filter(Boolean)
-            .join("\n")
-        : a.candidate!;
+      const text =
+        (action.append ?? a.append)
+          ? [state.answers[state.index].text, a.candidate]
+              .filter(Boolean)
+              .join("\n")
+          : a.candidate!;
       return { ...editAnswer(state, state.index, text), active: undefined };
     }
     case "evaluation": {
