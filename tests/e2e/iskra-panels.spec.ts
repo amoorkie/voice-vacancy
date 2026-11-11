@@ -513,7 +513,8 @@ test("карточка распознавания сохраняет текст,
   const time = new Date("2026-11-11T12:00:00Z");
   await page.clock.install({ time });
   await enter(page);
-  await page.clock.pauseAt(new Date(time.getTime() + 1000));
+  // В CI загрузка может длиться дольше секунды: отсчитываю остановку от уже открытого диалога.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10_000));
   const answer = page.getByLabel("Расшифровка", { exact: true });
   await answer.fill("Мой термин");
   await page
