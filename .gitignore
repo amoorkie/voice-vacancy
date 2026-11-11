@@ -23,3 +23,9 @@ Thumbs.db
 *.m4a
 *.webm
 *.ogg
+
+# Локальный runtime и результаты браузерных проверок.
+.tools/
+playwright-report/
+test-results/
+*.log
