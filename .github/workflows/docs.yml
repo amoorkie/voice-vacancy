@@ -1,0 +1,19 @@
+name: Documentation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      # Действие закреплено по SHA тега v6, проверенному при создании workflow.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check documentation
+        run: python3 scripts/check_docs.py
+      - name: Check whitespace
+        run: git show --format= --check HEAD
