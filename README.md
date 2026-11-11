@@ -43,7 +43,7 @@
 | Как это реализовано | [План](docs/specs/005-iskra-workspace/plan.md), [задачи](docs/specs/005-iskra-workspace/tasks.md) |
 | Промпты приложения | [Генерация и проверка ответов](src/server/prompts.ts) |
 | Работа с Codex | [Журнал процесса](docs/process/ai-worklog.md) |
-| Публичная проверка и выкладка | [Отчёт](docs/verification/006-public-deployment.md), [размещение и откат](docs/technical/deployment.md) |
+| Публичная проверка и выкладка | [Отчёт](docs/verification/007-real-voice.md), [размещение и откат](docs/technical/deployment.md) |
 
 Полная навигация находится в [docs](docs/README.md).
 
@@ -70,4 +70,4 @@ npm run test:e2e
 python scripts/check_docs.py
 ```
 
-Перед выкладкой прошли проверка типов, сборка, 41 тест и 54 браузерных прогона Chrome/Edge. Публичный сценарий с настоящей генерацией, редактированием и экспортом проверен отдельно. [Результаты](docs/verification/006-public-deployment.md).
+Перед выкладкой прошли проверка типов, сборка, 41 тест и 54 браузерных прогона Chrome/Edge. Публичный сценарий с настоящей генерацией, редактированием и экспортом проверен отдельно. [Результаты](docs/verification/007-real-voice.md).

@@ -4,6 +4,9 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { encodeWave } from "../../src/client/interview/microphone";
 
+// Проверяю аудиоустройства последовательно, чтобы не совмещать два новых браузерных аудиосервиса.
+test.describe.configure({ mode: "serial" });
+
 for (const silent of [true, false]) {
   test(
     silent
