@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   app:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # Действия закреплены по проверенным SHA тегов v6.
@@ -20,8 +20,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: npx playwright install --with-deps chromium
+      # В образе GitHub уже есть Chrome и Edge: не жду повторной загрузки браузера и apt.
+      - run: google-chrome --version && microsoft-edge --version
       - run: npm run test:e2e
         env:
           CI: 'true'
+          TEST_BROWSER: chrome,msedge
       - run: python3 scripts/check_docs.py
