@@ -1,9 +1,18 @@
 // Редактор показывает сохранённую редакцию, её источники и состояние текущей попытки сборки.
-import { ArrowRight, Copy, Download, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { VacancyDocument } from "./VacancyDocument";
+import { vacancyDocumentText } from "./vacancy-document";
+import {
+  ArrowRight,
+  Copy,
+  Download,
+  RotateCcw,
+  Pencil,
+  Check,
+} from "lucide-react";
 import { sectionIds, sectionNames } from "../../contracts/interview";
-import { topics } from "../../domain/fixtures";
 import { resultStale } from "../../domain/session";
-import { downloadText, summaryText, vacancyText } from "../export";
+import { downloadText, summaryText } from "../export";
 import type { InterviewSession } from "../interview/useInterviewSession";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -21,6 +30,7 @@ export function VacancyPreview({
   const { state, dispatch, copy } = session;
   const result = state.result;
   const waiting = state.active?.kind === "generation";
+  const [editing, setEditing] = useState(false);
   const stale = !!result && resultStale(state);
   return (
     <>
@@ -34,14 +44,27 @@ export function VacancyPreview({
             Черновик вакансии
           </h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="К ответам"
-          onClick={back}
-        >
-          <ArrowRight />
-        </Button>
+        <div className="ix-actions">
+          {result && !waiting && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={editing}
+              onClick={() => setEditing(!editing)}
+            >
+              {editing ? <Check /> : <Pencil />}
+              {editing ? "Готово" : "Редактировать"}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="К ответам"
+            onClick={back}
+          >
+            <ArrowRight />
+          </Button>
+        </div>
       </header>
       <div className="ix-scroll" aria-busy={waiting}>
         {waiting ? (
@@ -75,7 +98,9 @@ export function VacancyPreview({
                 {result ? "Пересобрать черновик" : "Попробовать снова"}
               </Button>
             )}
+            {result && !editing && <VacancyDocument result={result} />}
             {result &&
+              editing &&
               sectionIds.map((id) => (
                 <section className="ix-section" key={id}>
                   <div className="ix-label">
@@ -92,7 +117,16 @@ export function VacancyPreview({
                       </Button>
                     )}
                   </div>
+                  {id === "role" && (
+                    <small id="ix-role-hint" className="ix-role-hint">
+                      Первая строка — название вакансии, ниже можно указать
+                      условия.
+                    </small>
+                  )}
                   <Textarea
+                    aria-describedby={
+                      id === "role" ? "ix-role-hint" : undefined
+                    }
                     id={"ix-" + id}
                     value={result.edits[id] ?? result.generated.sections[id]}
                     onChange={(e) =>
@@ -103,20 +137,6 @@ export function VacancyPreview({
                       })
                     }
                   />
-                  {result.generated.sources[id]?.length && (
-                    <details>
-                      <summary>Исходный ответ</summary>
-                      {result.generated.sources[id]?.map((source) => {
-                        const i = topics.findIndex((t) => t.id === source);
-                        return (
-                          <blockquote key={source}>
-                            <strong>{topics[i].short}</strong>{" "}
-                            {result.sourceTexts[i]}
-                          </blockquote>
-                        );
-                      })}
-                    </details>
-                  )}
                 </section>
               ))}
           </>
@@ -132,14 +152,16 @@ export function VacancyPreview({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void copy(vacancyText(state))}
+                onClick={() => void copy(vacancyDocumentText(state))}
               >
                 <Copy />
                 Копировать
               </Button>
               <Button
                 size="sm"
-                onClick={() => downloadText(vacancyText(state), "вакансия.txt")}
+                onClick={() =>
+                  downloadText(vacancyDocumentText(state), "вакансия.txt")
+                }
               >
                 <Download />
                 Скачать .txt

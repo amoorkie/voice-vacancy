@@ -26,6 +26,7 @@ export function runFixture(
       if (attempt.kind === "transcription")
         deliver({
           type: "transcript",
+          fillEmpty: !!samples,
           id: attempt.id,
           text: samples?.[attempt.question] ?? topics[attempt.question].sample,
         });

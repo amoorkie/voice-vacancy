@@ -181,7 +181,12 @@ export function VacancyComposer({
             aria-hidden={!open || !!choice}
             aria-labelledby="ix-preview-title"
           >
-            <VacancyPreview session={session} back={back} generate={generate} />
+            <VacancyPreview
+              key={open ? "open" : "closed"}
+              session={session}
+              back={back}
+              generate={generate}
+            />
           </section>
         </div>
         <section

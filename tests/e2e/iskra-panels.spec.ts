@@ -60,7 +60,20 @@ test("четыре подтверждения, неподвижное интер
   await create.focus();
   const forward = await measure(create);
   const role = page.getByLabel("Роль и известные условия");
-  await expect(role).toHaveValue(/Frontend/);
+  const article = page.getByRole("article");
+  await expect(
+    article.getByRole("heading", { name: "Frontend-разработчик" }),
+  ).toBeVisible();
+  await expect(article.getByRole("listitem").first()).toBeVisible();
+  await expect(page.locator(".ix-preview textarea")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".ix-preview")
+      .evaluate((n) => getComputedStyle(n).borderRadius),
+  ).toBe("24px 0px 0px 24px");
+  await page
+    .getByRole("button", { name: "Редактировать", exact: true })
+    .click();
   await expect(page.locator(".ix-preview textarea")).toHaveCount(6);
   expect(forward[0].left - forward.at(-1)!.left).toBe(720);
   expect(
@@ -69,6 +82,10 @@ test("четыре подтверждения, неподвижное интер
     ),
   ).toBe(true);
   await role.fill("Моя редакция роли");
+  await page.getByRole("button", { name: "Готово", exact: true }).click();
+  await expect(
+    article.getByRole("heading", { name: "Моя редакция роли" }),
+  ).toBeVisible();
   const file = page.waitForEvent("download");
   await page.getByRole("button", { name: "Скачать .txt" }).click();
   const download = await file;
@@ -100,15 +117,21 @@ test("четыре подтверждения, неподвижное интер
     .click();
   await confirm(page, "Пока не знаю");
   await page.getByRole("button", { name: "Открыть черновик" }).click();
-  await expect(role).toHaveValue("Моя редакция роли");
+  await expect(
+    article.getByRole("heading", { name: "Моя редакция роли" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Пересобрать черновик" }).click();
   await expect(page.getByRole("button", { name: "Остаться" })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(role).toHaveValue("Моя редакция роли");
+  await expect(
+    article.getByRole("heading", { name: "Моя редакция роли" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Пересобрать черновик" }).click();
   await page.getByRole("button", { name: "Пересобрать", exact: true }).click();
-  await expect(role).toHaveValue(/Frontend/);
-  await expect(page.getByLabel("Первые шесть месяцев")).toHaveValue(
+  await expect(
+    article.getByRole("heading", { name: /Frontend/ }),
+  ).toBeVisible();
+  await expect(article.locator('[data-section="first-half"]')).toContainText(
     unknownAnswer,
   );
 });
@@ -119,12 +142,12 @@ test("запись и ручные правки сохраняются отде�
   await enter(page);
   const answer = page.getByLabel("Расшифровка");
   await answer.fill("Мой термин");
-  await page.getByRole("button", { name: "Начать запись" }).click();
+  await page.getByRole("button", { name: "Дополнить запись" }).click();
   await page.getByRole("button", { name: /Первое полугодие —/ }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Добавить к ответу" }).click();
   await expect(answer).toHaveValue("Мой термин\n" + workspaceSamples[0]);
-  await page.getByRole("button", { name: "Начать запись" }).click();
+  await page.getByRole("button", { name: "Дополнить запись" }).click();
   await page.getByRole("button", { name: "Остановить запись" }).click();
   await page.getByRole("button", { name: "Заменить текст" }).click();
   await page.getByRole("button", { name: "Проверить полноту" }).click();
@@ -191,9 +214,9 @@ test("на телефоне активна одна панель, Escape воз�
     if (phase === "preview") {
       for (let i = 0; i < 4; i++) await confirm(page);
       await page.getByRole("button", { name: "Создать черновик" }).click();
-      await expect(page.getByLabel("Ежедневные задачи")).toHaveValue(
-        workspaceSamples[0],
-      );
+      await expect(
+        page.getByRole("article").getByRole("listitem").first(),
+      ).toContainText("Разрабатывать формы");
       await expect(page.getByRole("progressbar")).toHaveCount(0);
     }
     expect(
@@ -236,16 +259,47 @@ test("двойное нажатие открывает одно превью, п
     page.getByRole("heading", { name: "Черновик вакансии" }),
   ).toHaveCount(0);
   await create.click();
-  await expect(page.getByLabel("Ежедневные задачи")).toHaveValue(
-    workspaceSamples[0],
-  );
+  await expect(
+    page.getByRole("article").getByRole("listitem").first(),
+  ).toContainText("Разрабатывать формы");
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Открыть черновик" }).click();
   await expect(
     page.getByRole("button", { name: "Отменить сборку" }),
   ).toHaveCount(0);
-  await expect(page.getByLabel("Ежедневные задачи")).toHaveValue(
-    workspaceSamples[0],
+  await expect(
+    page.getByRole("article").getByRole("listitem").first(),
+  ).toContainText("Разрабатывать формы");
+});
+
+test("первая запись останавливается и подтверждается одной круглой кнопкой", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enter(page);
+  const button = page.locator(".ix-glass");
+  await expect(button).toHaveAccessibleName("Начать запись");
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(button).toHaveAccessibleName("Остановить запись");
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Расшифровка")).toHaveValue(workspaceSamples[0]);
+  await expect(button).toHaveAccessibleName("Подтвердить ответ");
+  await expect(button).toBeFocused();
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "0",
   );
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "1",
+  );
+  const ticks = page.locator(".ix-voice .is-filled");
+  await expect(ticks).toHaveCount(15);
+  await expect
+    .poll(() => ticks.last().evaluate((n) => getComputedStyle(n).transform))
+    .toContain("2.95");
+  await expect(button).toHaveAccessibleName("Начать запись");
 });

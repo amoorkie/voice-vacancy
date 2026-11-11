@@ -70,7 +70,7 @@ test("вход в интервью на тестовых данных, подк�
     requests.filter(
       (url) =>
         new URL(url).origin !== new URL(page.url()).origin ||
-        url.includes("/api/"),
+        (url.includes("/api/") && !url.endsWith("/api/config")),
     ),
   ).toEqual([]);
 });

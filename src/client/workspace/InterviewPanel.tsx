@@ -38,7 +38,12 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
   return (
     <div className="ix-editor">
       <div className="ix-label">
-        <label htmlFor="ix-answer">Расшифровка</label>
+        <div>
+          <label htmlFor="ix-answer">Расшифровка</label>
+          {(answer.text || answer.confirmedText !== null) && (
+            <small className="ix-answer-status">{answerStatus(answer)}</small>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -60,40 +65,6 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
           Сократите ответ до {MAX_TEXT} символов. Сейчас{" "}
           {textLength(answer.text)}.
         </p>
-      )}
-      {active?.phase === "candidate" && (
-        <section className="ix-fragment" aria-label="Новый фрагмент">
-          <strong>Новый фрагмент</strong>
-          <p>{active.candidate}</p>
-          <div className="ix-actions">
-            {answer.text && (
-              <Button
-                size="sm"
-                onClick={() =>
-                  dispatch({ type: "apply-transcript", append: true })
-                }
-              >
-                Добавить к ответу
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant={answer.text ? "outline" : "default"}
-              onClick={() =>
-                dispatch({ type: "apply-transcript", append: false })
-              }
-            >
-              {answer.text ? "Заменить текст" : "Принять текст"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => dispatch({ type: "cancel" })}
-            >
-              Отказаться
-            </Button>
-          </div>
-        </section>
       )}
       <div className="ix-actions">
         <Button
@@ -179,6 +150,41 @@ export function InterviewPanel({
   const review = state.stage === "review" || state.stage === "result";
   const recording = active?.phase === "recording";
   const topic = topics[index];
+  const answer = answers[index];
+  const hasAnswer = answer.text.length > 0;
+  const canConfirm = validText(answer.text);
+  const pending = !!active && !recording;
+  const live = session.runtime?.mode === "api";
+  const draftLabel = previewActive
+    ? "Превью открыто"
+    : state.result
+      ? "Открыть черновик"
+      : "Создать черновик";
+  const voiceLabel = review
+    ? draftLabel
+    : recording
+      ? "Остановить запись"
+      : active?.phase === "candidate"
+        ? "Выберите действие с фрагментом"
+        : pending
+          ? "Обработка ответа…"
+          : hasAnswer
+            ? "Подтвердить ответ"
+            : "Начать запись";
+
+  /** Круг меняет действие на том же месте. Текст и готовность темы меняются только после явного подтверждения. */
+  function mainAction() {
+    if (
+      previewActive ||
+      pending ||
+      (!review && !recording && hasAnswer && !canConfirm)
+    )
+      return;
+    if (review) preview();
+    else if (recording) dispatch({ type: "stop" });
+    else if (hasAnswer) dispatch({ type: "confirm" });
+    else start("transcription");
+  }
   const heading = useRef<HTMLHeadingElement>(null);
   const previous = useRef({ index, review });
   useLayoutEffect(() => {
@@ -189,12 +195,7 @@ export function InterviewPanel({
     // При смене темы читаем новый вопрос, не прокручивая кабинет за панелью.
     heading.current.focus({ preventScroll: true });
     const scroll = heading.current.closest(".ix-scroll");
-    if (scroll) {
-      const bounds = scroll.getBoundingClientRect();
-      const label = heading.current.getBoundingClientRect();
-      if (label.top < bounds.top || label.bottom > bounds.bottom)
-        scroll.scrollTop += label.top - bounds.top - 16;
-    }
+    if (scroll) scroll.scrollTop = 0;
   }, [index, review, previewActive]);
   return (
     <>
@@ -202,7 +203,7 @@ export function InterviewPanel({
         <div className="ix-titles">
           <span className="ix-eyebrow">
             <i />
-            Искра · Демо-интервью
+            {live ? "Искра · WikiVibe" : "Искра · Интервью"}
           </span>
           <h2 tabIndex={-1} id="ix-interview-title">
             Создание вакансии
@@ -218,37 +219,99 @@ export function InterviewPanel({
         </Button>
       </header>
       <div className="ix-scroll">
+        {!review && (
+          <div className="ix-question">
+            <h3 ref={heading} tabIndex={-1}>
+              {topic.title}
+            </h3>
+            <p>{topic.hint}</p>
+          </div>
+        )}
         <div className="ix-voice">
-          <ProgressRing completed={count} recording={recording}>
+          <ProgressRing completed={count} recording={recording} scan>
             <button
+              id="ix-main-action"
               className="ix-glass"
               type="button"
-              disabled={review || (!!active && !recording)}
-              aria-label={recording ? "Остановить запись" : "Начать запись"}
-              onClick={() =>
-                recording ? dispatch({ type: "stop" }) : start("transcription")
+              aria-disabled={
+                previewActive ||
+                pending ||
+                (!review && !recording && hasAnswer && !canConfirm)
               }
+              aria-label={voiceLabel}
+              onClick={mainAction}
             >
               <img src="/assets/microphone-glass.png" alt="" />
-              {review ? <Check /> : recording ? <Square /> : <Mic />}
+              {review ? (
+                <FileText />
+              ) : recording ? (
+                <Square />
+              ) : hasAnswer && !pending ? (
+                <Check />
+              ) : (
+                <Mic />
+              )}
             </button>
           </ProgressRing>
-          <strong>
-            {review
-              ? "Интервью собрано"
-              : recording
-                ? "Остановить запись"
-                : active?.phase === "candidate"
-                  ? "Проверьте расшифровку"
-                  : active?.phase === "waiting"
-                    ? "Обработка ответа…"
-                    : "Начать запись"}
-          </strong>
+          <label
+            className="ix-action-label"
+            htmlFor="ix-main-action"
+            aria-live="polite"
+          >
+            {voiceLabel}
+          </label>
           <span>
             {recording
               ? "Демо-запись · " + seconds + " с"
               : "Темы: " + count + " из 4"}
           </span>
+          {!review && !active && hasAnswer && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => start("transcription")}
+            >
+              <Mic />
+              Дополнить запись
+            </Button>
+          )}
+          {active?.phase === "candidate" && (
+            <section className="ix-fragment" aria-label="Новый фрагмент">
+              <strong>Новый фрагмент</strong>
+              <p>{active.candidate}</p>
+              <div className="ix-actions">
+                {answer.text && (
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      dispatch({ type: "apply-transcript", append: true })
+                    }
+                  >
+                    Добавить к ответу
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant={answer.text ? "outline" : "default"}
+                  onClick={() =>
+                    dispatch({ type: "apply-transcript", append: false })
+                  }
+                >
+                  {answer.text ? "Заменить текст" : "Принять текст"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => dispatch({ type: "cancel" })}
+                >
+                  Отказаться
+                </Button>
+              </div>
+            </section>
+          )}
+          {!review && !recording && !active && !hasAnswer && (
+            <small>Демо-запись · без микрофона</small>
+          )}
         </div>
         <nav className="ix-topics" aria-label="Темы интервью">
           {topics.map((item, i) => (
@@ -293,15 +356,6 @@ export function InterviewPanel({
           </section>
         ) : (
           <>
-            <div className="ix-question">
-              <span className="ix-question-status">
-                {answerStatus(answers[index])}
-              </span>
-              <h3 ref={heading} tabIndex={-1}>
-                {topic.title}
-              </h3>
-              <p>{topic.hint}</p>
-            </div>
             <TranscriptEditor session={session} />
           </>
         )}
@@ -310,36 +364,38 @@ export function InterviewPanel({
             {state.message}
           </p>
         )}
-        <details className="ix-demo-options">
-          <summary>Параметры демо</summary>
-          <label>
-            Следующая операция{" "}
-            <select
-              value={state.outcome}
-              onChange={(e) =>
-                dispatch({
-                  type: "outcome",
-                  outcome: e.target.value as Outcome,
-                })
-              }
-            >
-              <option value="success">Успех</option>
-              <option value="error">Ошибка</option>
-              <option value="timeout">Тайм-аут</option>
-            </select>
-          </label>
-          {!review && index === 3 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                dispatch({ type: "edit", index, text: conflictingSkills })
-              }
-            >
-              Пример противоречия
-            </Button>
-          )}
-        </details>
+        {session.runtime?.mode === "fixtures" && (
+          <details className="ix-demo-options">
+            <summary>Параметры демо</summary>
+            <label>
+              Следующая операция{" "}
+              <select
+                value={state.outcome}
+                onChange={(e) =>
+                  dispatch({
+                    type: "outcome",
+                    outcome: e.target.value as Outcome,
+                  })
+                }
+              >
+                <option value="success">Успех</option>
+                <option value="error">Ошибка</option>
+                <option value="timeout">Тайм-аут</option>
+              </select>
+            </label>
+            {!review && index === 3 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  dispatch({ type: "edit", index, text: conflictingSkills })
+                }
+              >
+                Пример противоречия
+              </Button>
+            )}
+          </details>
+        )}
         <Button size="sm" variant="ghost" onClick={connect}>
           <Link2 />
           Подключить существующую
@@ -355,27 +411,14 @@ export function InterviewPanel({
           <FileText />
           Сводка .txt
         </Button>
-        {!review && (
-          <Button
-            disabled={!validText(answers[index].text) || !!active}
-            onClick={() => dispatch({ type: "confirm" })}
-          >
-            <Check />
-            Подтвердить ответ
+        {!review && state.result && (
+          <Button onClick={preview}>
+            <FileText />
+            Открыть черновик
           </Button>
         )}
-        {(review || state.result) && (
-          <Button
-            disabled={previewActive || (!state.result && count !== 4)}
-            onClick={preview}
-          >
-            <FileText />
-            {previewActive
-              ? "Превью открыто"
-              : state.result
-                ? "Открыть черновик"
-                : "Создать черновик"}
-          </Button>
+        {live && (
+          <small>Проверка и черновик отправляют текст в WikiVibe.</small>
         )}
       </footer>
     </>

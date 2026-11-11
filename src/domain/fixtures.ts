@@ -156,15 +156,19 @@ export function fixtureDraft(texts: string[]): Draft | "insufficient" | null {
     return {
       sections: {
         role: roleKnown
-          ? "Frontend-разработчик. Условия работы ещё не указаны."
+          ? "Frontend-разработчик\nУсловия работы ещё не указаны."
           : "Название роли и условия работы пока не указаны.",
-        tasks: texts[0],
+        tasks: roleKnown
+          ? "Разрабатывать формы кабинета.\nИсправлять ошибки по обращениям.\nПокрывать изменения тестами."
+          : texts[0],
         "first-half": texts[1],
         "next-half": texts[2],
         skills:
           texts[3] === conflictingSkills
             ? "Требования к Playwright расходятся."
-            : texts[3],
+            : texts[3] === workspaceSamples[3]
+              ? "Обязательны React, TypeScript и умение делать доступные формы.\nОпыт с Playwright желателен."
+              : texts[3],
         clarifications: questions.join(" "),
       },
       sources: {

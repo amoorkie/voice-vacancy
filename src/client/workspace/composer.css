@@ -129,7 +129,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   border-radius: 50%;
   background: #f27818;
 }
-.ix-head [data-slot="button"] {
+.ix-head [data-size="icon"] {
   border-radius: 50%;
   background: #f2f3f3;
 }
@@ -151,7 +151,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   row-gap: 2px;
   padding: 0 0 16px;
 }
-.ix-voice strong {
+.ix-voice .ix-action-label {
   font-size: 16px;
   letter-spacing: -0.025em;
 }
@@ -179,14 +179,34 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   height: 100%;
   overflow: visible;
 }
+/* Деления растут от внутреннего края кольца. Задержка задаёт бегущий фронт каждой четверти. */
 .ix-voice .progress-segment {
-  stroke: #9ba1a7;
-  stroke-width: 3;
+  stroke: #a2a9ac;
+  stroke-width: 4.3;
   stroke-linecap: round;
-  transition: stroke 150ms linear var(--segment-delay);
+  transform-origin: 200px 34px;
+  transition:
+    transform 380ms cubic-bezier(0.23, 1.55, 0.35, 1) var(--segment-delay),
+    stroke 220ms ease var(--segment-delay);
 }
 .ix-voice .progress-segment.is-filled {
-  stroke: #ef7313;
+  stroke: #268750;
+  transform: scaleY(2.95);
+}
+.ix-voice .is-recording .progress-segment:not(.is-filled) {
+  animation: ix-scan 1.68s ease-in-out var(--scan-lag) infinite;
+}
+@keyframes ix-scan {
+  0%,
+  32%,
+  100% {
+    transform: scaleY(1);
+    stroke: #a2a9ac;
+  }
+  12% {
+    transform: scaleY(2.35);
+    stroke: #5c7480;
+  }
 }
 .ix-voice .orbit-center {
   position: absolute;
@@ -220,7 +240,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   color: #39434c;
   stroke-width: 1.5;
 }
-.ix-glass:hover:enabled {
+.ix-glass:hover:not([aria-disabled="true"]) {
   transform: scale(1.035);
 }
 .ix-voice .is-recording .ix-glass {
@@ -436,13 +456,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   }
 }
 
-.ix-question-status {
-  display: block;
-  color: #5b6066;
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
 /* Закрытое для ввода интервью удерживает повторный клик внутри диалога. */
 @media (min-width: 1200px) {
   .ix-interview-shield {
@@ -458,6 +471,132 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   grid-template-columns: auto auto;
   justify-items: start;
 }
-.ix-voice strong {
+.ix-voice .ix-action-label {
   font-weight: 600;
+}
+
+/* В разложенном виде внутренний торец превью уходит под интервью. */
+@media (min-width: 1200px) {
+  .ix-preview {
+    border-radius: 24px 0 0 24px;
+    border-right: 0;
+  }
+}
+.ix-voice small,
+.ix-foot small {
+  color: #5b6066;
+  font-size: 12px;
+}
+.ix-interview .ix-question {
+  text-align: center;
+  margin: 0 auto 12px;
+  max-width: 460px;
+}
+.ix-interview .ix-question h3 {
+  font-weight: 620;
+  letter-spacing: -0.035em;
+}
+.ix-interview .ix-question p {
+  margin: 6px 0;
+}
+.ix-voice .ix-fragment {
+  width: 100%;
+  text-align: left;
+}
+.ix-document {
+  color: #202527;
+  max-width: 66ch;
+  margin: 8px auto 28px;
+  overflow-wrap: anywhere;
+}
+.ix-document h3 {
+  font-size: clamp(25px, 3vw, 36px);
+  letter-spacing: -0.055em;
+  line-height: 1.12;
+  margin-bottom: 12px;
+}
+.ix-document h4,
+.ix-sources h4 {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  margin: 0 0 8px;
+}
+.ix-document section {
+  margin: 24px 0 0;
+}
+.ix-document p,
+.ix-document li {
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.ix-document p + p,
+.ix-document li + li {
+  margin-top: 5px;
+}
+.ix-document ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 22px;
+}
+.ix-document li::marker {
+  color: #838983;
+}
+.ix-document [data-section="clarifications"] {
+  border-top: 1px solid #dedfdd;
+  padding-top: 17px;
+}
+.ix-sources {
+  color: #555d60;
+  font-size: 13px;
+  border-top: 1px solid #dedfdd;
+  padding-top: 12px;
+}
+.ix-sources section {
+  margin: 16px 0;
+}
+.ix-sources blockquote {
+  border-left: 2px solid #ccd2cf;
+  margin: 6px 0;
+  padding-left: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ix-action-label {
+  cursor: pointer;
+}
+.ix-answer-status {
+  margin-left: 7px;
+  font-size: 12px;
+  color: #656a6c;
+}
+.ix-preview .ix-head .ix-actions {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.ix-pane [aria-disabled="true"] {
+  cursor: default;
+}
+@media (max-width: 479px) {
+  .ix-preview .ix-head h2 {
+    font-size: 18px;
+  }
+  .ix-preview .ix-foot > .ix-actions {
+    flex-wrap: nowrap;
+  }
+  .ix-preview .ix-foot {
+    column-gap: 4px;
+  }
+  .ix-preview .ix-foot [data-slot="button"] {
+    gap: 4px;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+  .ix-preview .ix-head .ix-actions [data-size="sm"] {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
 }

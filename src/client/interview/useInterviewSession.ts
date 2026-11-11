@@ -7,13 +7,11 @@ import { runOwnerApi, type RuntimeConfig } from "../owner-adapter";
 import type { OperationKind } from "../../contracts/interview";
 
 /** Хранит ответы и редактируемый результат, выполняет и отменяет операции одного сеанса. */
-export function useInterviewSession(demo: boolean) {
-  const [runtime, setRuntime] = useState<RuntimeConfig | undefined>(() =>
-    demo ? { mode: "fixtures", csrfToken: "", model: null } : undefined,
-  );
+export function useInterviewSession(workspace: boolean) {
+  const [runtime, setRuntime] = useState<RuntimeConfig>();
   const [state, dispatch] = useReducer(sessionReducer, undefined, () => {
     const session = initialSession();
-    return demo ? sessionReducer(session, { type: "begin" }) : session;
+    return workspace ? sessionReducer(session, { type: "begin" }) : session;
   });
   const latest = useRef(state);
   latest.current = state;
@@ -21,7 +19,6 @@ export function useInterviewSession(demo: boolean) {
   const recording = active?.phase === "recording";
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
-    if (demo) return;
     const controller = new AbortController();
     void fetch("/api/config", { signal: controller.signal })
       .then(async (response) => {
@@ -39,7 +36,7 @@ export function useInterviewSession(demo: boolean) {
           setRuntime({ mode: "unavailable", csrfToken: "", model: null });
       });
     return () => controller.abort();
-  }, [demo]);
+  }, []);
 
   useEffect(() => {
     if (active?.phase !== "waiting") return;
@@ -49,10 +46,10 @@ export function useInterviewSession(demo: boolean) {
         active,
         latest.current,
         dispatch,
-        demo ? workspaceSamples : undefined,
+        workspace ? workspaceSamples : undefined,
       );
     return runOwnerApi(active, latest.current, runtime, dispatch);
-  }, [active?.id, active?.phase, runtime, demo]);
+  }, [active?.id, active?.phase, runtime, workspace]);
   useEffect(() => {
     if (!recording) {
       setSeconds(0);
