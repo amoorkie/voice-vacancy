@@ -48,12 +48,26 @@ async function measure(button: Locator) {
     const frames = [frame()];
     (node as HTMLButtonElement).click();
     const start = performance.now();
+    let settled = 0;
+    let previous = frames[0].left;
     do {
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
       );
-      frames.push(frame());
-    } while (performance.now() - start < 440);
+      const current = frame();
+      frames.push(current);
+      const moving = left
+        .getAnimations()
+        .some((animation) => animation.playState === "running");
+      // В загруженном CI переход может начаться позже. Жду его завершения и три стабильных кадра.
+      settled =
+        Math.abs(current.left - frames[0].left) > 1 &&
+        Math.abs(current.left - previous) < 0.05 &&
+        !moving
+          ? settled + 1
+          : 0;
+      previous = current.left;
+    } while (settled < 3 && performance.now() - start < 2500);
     return frames;
   });
 }
