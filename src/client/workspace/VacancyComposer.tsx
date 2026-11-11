@@ -15,13 +15,7 @@ type Choice = {
 };
 
 /** Открывает левый слой из-под правого. Никакой переход превью не изменяет геометрию интервью. */
-export function VacancyComposer({
-  onExit,
-  onConnect,
-}: {
-  onExit: () => void;
-  onConnect: () => void;
-}) {
+export function VacancyComposer({ onExit }: { onExit: () => void }) {
   const session = useInterviewSession(true);
   const { state, dispatch, start } = session;
   const [open, setOpen] = useState(false);
@@ -201,7 +195,6 @@ export function VacancyComposer({
             session={session}
             navigate={navigate}
             close={() => leave(onExit)}
-            connect={() => leave(onConnect)}
             preview={showPreview}
             previewActive={open}
           />

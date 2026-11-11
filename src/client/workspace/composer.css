@@ -40,7 +40,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   background: rgb(33 37 43 / 28%);
 }
 .composer-host :focus-visible {
-  outline: 2px solid #955011;
+  outline: 2px solid #4b5c5b;
   outline-offset: 2px;
 }
 .ix-pane {
@@ -115,20 +115,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 .ix-head h2:focus {
   outline: 0;
 }
-.ix-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #5a5d60;
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-.ix-eyebrow i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #f27818;
-}
 .ix-head [data-size="icon"] {
   border-radius: 50%;
   background: #f2f3f3;
@@ -155,15 +141,10 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   font-size: 16px;
   letter-spacing: -0.025em;
 }
-.ix-voice > span,
 .ix-question p,
 .ix-answer-row span,
-.ix-demo-options,
 .ix-notice p {
   color: #5b6066;
-}
-.ix-voice > span {
-  font-size: 12px;
 }
 .ix-voice .progress-orbit {
   position: relative;
@@ -252,40 +233,110 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
       0 6px 24px #83a7dc77;
   }
 }
+/* Четыре темы занимают одну строку. Переливание относится только к выбранной теме. */
 .ix-topics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.25fr) minmax(
+      0,
+      1.4fr
+    ) minmax(0, 0.8fr);
+  gap: 5px;
+  margin: 0 0 24px;
 }
 .ix-topics button {
+  min-width: 0;
   border-radius: 99px;
   padding: 0;
 }
 .ix-topics [data-slot="badge"] {
-  border: 1px solid #d6d9dc;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #dce1df;
   border-radius: 99px;
-  padding: 5px 9px;
-  gap: 5px;
-  background: #fafafa;
-  color: #41464b;
-  font-size: 12px;
+  background: #f7f8f7;
+  color: #59625f;
+  font-size: 11px;
   font-weight: 500;
+  transition:
+    background-color 250ms,
+    border-color 250ms,
+    color 250ms;
 }
 .ix-topics [data-active="true"] {
-  background: #fff1e7;
-  border-color: #ef9a55;
-  color: #82400c;
+  background: #edf2f4;
+  border-color: #a8bbbf;
+  color: #293f43;
+}
+.ix-topics [data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    #fff 48%,
+    transparent 75%
+  );
+  transform: translateX(-110%);
+  animation: ix-topic-light 4.5s ease-in-out infinite;
+}
+@keyframes ix-topic-light {
+  50%,
+  100% {
+    transform: translateX(110%);
+  }
 }
 .ix-topics [data-done="true"] {
   background: #edf5ef;
   color: #2b603e;
   border-color: #cbded2;
 }
-.ix-num {
-  font-variant-numeric: tabular-nums;
-  font-size: 10px;
+.ix-topics [data-done="true"] svg {
+  animation: ix-topic-check 350ms ease-out;
+}
+@keyframes ix-topic-check {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ix-topic-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.ix-topics [data-slot="badge"] svg {
+  flex-shrink: 0;
+}
+.ix-topic-short {
+  display: none;
+}
+@media (max-width: 479px) {
+  .ix-topics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .ix-topic-full {
+    display: none;
+  }
+  .ix-topic-short {
+    display: inline;
+  }
+  .ix-topics [data-slot="badge"] {
+    font-size: 11px;
+  }
 }
 .ix-question h3,
 .ix-review h3,
@@ -358,21 +409,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
 .ix-answer-row span {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-.ix-demo-options {
-  margin-top: 8px;
-  font-size: 12px;
-}
-.ix-demo-options {
-  margin-top: 18px;
-}
-.ix-demo-options[open] > :not(summary) {
-  margin: 8px 6px 2px 0;
-}
-.ix-demo-options select {
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 3px;
 }
 .ix-prompt-back {
   z-index: 3;
@@ -453,11 +489,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
     pointer-events: auto;
   }
 }
-.ix-topics {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-items: start;
-}
 .ix-voice .ix-action-label {
   font-weight: 600;
 }
@@ -497,12 +528,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   margin: 0 auto 28px;
   overflow-wrap: anywhere;
 }
-.ix-edit-hint {
-  display: block;
-  margin-top: 3px;
-  color: #666b70;
-  font-size: 12px;
-}
 .ix-cover {
   position: relative;
   isolation: isolate;
@@ -511,22 +536,33 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   padding: 22px 24px 17px;
   min-height: 155px;
   color: #fffaf3;
-  background-color: #17130f;
+  background-color: #0e0f0e;
   background-image:
-    linear-gradient(
-      95deg,
-      rgb(13 12 13 / 88%) 4%,
-      rgb(19 14 12 / 70%) 45%,
-      transparent 90%
-    ),
+    linear-gradient(100deg, #0d0e0ee8 0%, #11100d94 46%, transparent 83%),
     radial-gradient(
-      ellipse at 84% 125%,
-      #ffa12a 0%,
-      #e95f07 20%,
-      #853807 39%,
+      ellipse at 84% 135%,
+      #ffb339 1%,
+      #ff7500 24%,
+      #a43e00 40%,
       transparent 68%
     ),
-    radial-gradient(ellipse at 88% 0%, #583013 0%, #181411 62%);
+    radial-gradient(
+      ellipse at 67% -52%,
+      #bd6b13 0%,
+      #5c310c 29%,
+      transparent 61%
+    ),
+    linear-gradient(130deg, #0c0e0d, #211509 70%, #4e2202);
+}
+.ix-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/assets/cover-grain.png") repeat;
+  mix-blend-mode: soft-light;
+  opacity: 0.2;
 }
 .ix-cover::after {
   content: "✦";
@@ -574,8 +610,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   padding-right: 34px;
   margin-bottom: 6px;
 }
-.ix-document h4,
-.ix-sources h4 {
+.ix-document h4 {
   font-size: 17px;
   font-weight: 650;
   line-height: 1.3;
@@ -619,7 +654,7 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   max-width: 100%;
   field-sizing: content;
   resize: none;
-  overflow: auto;
+  overflow: hidden;
   cursor: text;
   padding: 0 2px;
   margin-left: -2px;
@@ -652,16 +687,16 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   background: rgb(91 100 109 / 6%);
 }
 .ix-document textarea:focus {
-  outline: 2px solid #8b582b;
+  outline: 2px solid #637a79;
   outline-offset: 3px;
-  background: #fbf8f3;
+  background: #f5f8f7;
 }
 .ix-cover textarea:hover,
 .ix-cover textarea:focus {
   background: rgb(8 6 5 / 42%);
 }
 .ix-cover textarea:focus {
-  outline-color: #ffca90;
+  outline-color: #d6e3df;
 }
 @media (max-width: 639px) {
   .ix-cover {
@@ -672,23 +707,6 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
     margin-top: 17px;
   }
 }
-.ix-sources {
-  color: #555d60;
-  font-size: 13px;
-  border-top: 1px solid #dedfdd;
-  padding-top: 12px;
-}
-.ix-sources section {
-  margin: 16px 0;
-}
-.ix-sources blockquote {
-  border-left: 2px solid #ccd2cf;
-  margin: 6px 0;
-  padding-left: 12px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .ix-action-label {
   cursor: pointer;
 }
@@ -722,5 +740,50 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   .ix-preview .ix-head .ix-actions [data-size="sm"] {
     font-size: 12px;
     padding-inline: 8px;
+  }
+}
+
+/* В интервью оставляю только закрытие. Начальный фокус доступен диктору без видимой рамки. */
+.ix-interview-head {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: 18px 24px 0;
+}
+.ix-interview-head [data-slot="button"] {
+  border-radius: 50%;
+  background: #f2f4f3;
+}
+.ix-interview-head h2:focus,
+.ix-question h3:focus,
+.ix-review h3:focus {
+  outline: none;
+}
+.ix-interview .ix-scroll {
+  padding-top: 6px;
+}
+.ix-interview .ix-voice {
+  padding-bottom: 24px;
+}
+.ix-interview .progress-orbit {
+  width: clamp(190px, 28vh, 244px);
+}
+.ix-interview .ix-question {
+  margin-bottom: 22px;
+}
+.ix-interview-foot,
+.ix-preview .ix-foot {
+  justify-content: flex-end;
+}
+.ix-pane textarea:focus-visible {
+  box-shadow: none;
+}
+.composer-host ::selection {
+  background: #3e5554;
+  color: #fff;
+}
+@media (max-width: 639px) {
+  .ix-interview-head {
+    padding: 12px 16px 0;
   }
 }

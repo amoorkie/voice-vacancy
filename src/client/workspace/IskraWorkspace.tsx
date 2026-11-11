@@ -1,11 +1,8 @@
 // Вход в локальный кабинет и возврат в ту же вакансию после интервью.
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ChevronRight,
-  FlaskConical,
   FolderOpen,
-  Link2,
   PanelLeft,
   Pin,
   Plus,
@@ -15,6 +12,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/client/ui/button";
 import { Input } from "@/client/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/client/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -128,20 +132,26 @@ function VacancyMenu({
             onChange={(e) => onQuery(e.target.value)}
           />
         </div>
-        <div className="isk-filter">
-          <SlidersHorizontal />
-          <select
-            aria-label="Статус вакансий"
-            value={status}
-            onChange={(e) => onStatus(e.target.value as Filter)}
+        <Select
+          value={status}
+          onValueChange={(value) => onStatus(value as Filter)}
+        >
+          <SelectTrigger className="isk-filter" aria-label="Статус вакансий">
+            <SlidersHorizontal aria-hidden="true" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            className="isk-status-popup"
+            position="popper"
+            align="start"
           >
-            {filters.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
+            {filters.map((filter) => (
+              <SelectItem key={filter.value} value={filter.value}>
+                {filter.label}
+              </SelectItem>
             ))}
-          </select>
-        </div>
+          </SelectContent>
+        </Select>
       </SidebarHeader>
       <SidebarContent className="isk-side-body">
         <nav aria-label="Вакансии">
@@ -207,36 +217,9 @@ function VacancyMenu({
   );
 }
 
-/** Показывает локальное пустое состояние подключения, которое наблюдалось в кабинете «Искры». */
-function Connection({ back }: { back: () => void }) {
-  const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    heading.current?.focus();
-  }, []);
-  return (
-    <div className="isk-page">
-      <Button variant="ghost" onClick={back}>
-        <ArrowLeft />К интервью
-      </Button>
-      <header className="isk-job-head">
-        <h1 ref={heading} tabIndex={-1}>
-          Подключение вакансий
-        </h1>
-      </header>
-      <div className="isk-empty">
-        <Link2 />
-        <h2>Нет доступных вакансий</h2>
-        <p>В демо нет внешнего аккаунта с вакансиями для подключения.</p>
-      </div>
-    </div>
-  );
-}
-
-/** Фильтры и выбор остаются в памяти при переходе в интервью или на локальный экран подключения. */
+/** Сохраняет фильтры и выбранную вакансию при возврате из интервью. */
 export function IskraWorkspace() {
-  const [screen, setScreen] = useState<"workspace" | "interview" | "connect">(
-    "workspace",
-  );
+  const [screen, setScreen] = useState<"workspace" | "interview">("workspace");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Filter>("all");
   const [selected, setSelected] = useState(vacancies[0].id);
@@ -252,11 +235,7 @@ export function IskraWorkspace() {
       target?.focus();
     }
     document.title =
-      screen === "interview"
-        ? "Создание вакансии · Искра"
-        : screen === "connect"
-          ? "Подключение вакансий · Искра"
-          : "Вакансии · Искра";
+      screen === "interview" ? "Создание вакансии · Искра" : "Вакансии · Искра";
   }, [screen]);
   // После подтверждённого выхода интервью размонтируется и освобождает свои операции.
   function back() {
@@ -284,16 +263,10 @@ export function IskraWorkspace() {
             <MenuButton />
             <span className="isk-crumb">Кабинет</span>
             <ChevronRight />
-            <strong>{screen === "connect" ? "Подключение" : "Вакансии"}</strong>
+            <strong>Вакансии</strong>
           </div>
-          <span className="isk-demo">
-            <FlaskConical />
-            Демо-данные
-          </span>
         </div>
-        {screen === "connect" ? (
-          <Connection back={() => setScreen("interview")} />
-        ) : current ? (
+        {current ? (
           <VacancyDashboard key={current.id} vacancy={current} />
         ) : (
           <div className="isk-empty">
@@ -312,9 +285,7 @@ export function IskraWorkspace() {
           </div>
         )}
       </SidebarInset>
-      {screen === "interview" && (
-        <VacancyComposer onExit={back} onConnect={() => setScreen("connect")} />
-      )}
+      {screen === "interview" && <VacancyComposer onExit={back} />}
     </SidebarProvider>
   );
 }

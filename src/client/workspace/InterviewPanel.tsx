@@ -3,21 +3,10 @@ import { useLayoutEffect, useRef } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { Check, FileText, Mic, Square, X, Link2 } from "lucide-react";
+import { Check, FileText, Mic, Square, X } from "lucide-react";
 import { ProgressRing } from "../ProgressRing";
-import { downloadText, summaryText } from "../export";
-import {
-  topics,
-  workspaceSamples,
-  unknownAnswer,
-  conflictingSkills,
-} from "../../domain/fixtures";
-import {
-  MAX_TEXT,
-  validText,
-  textLength,
-  type Outcome,
-} from "../../contracts/interview";
+import { topics, unknownAnswer } from "../../domain/fixtures";
+import { MAX_TEXT, validText, textLength } from "../../contracts/interview";
 import type { InterviewSession } from "../interview/useInterviewSession";
 import type { Answer } from "../../domain/session";
 
@@ -30,10 +19,9 @@ function answerStatus(answer: Answer) {
 
 /** Редактор текущей темы принимает расшифрованный фрагмент только по выбору пользователя. */
 function TranscriptEditor({ session }: { session: InterviewSession }) {
-  const { state, dispatch, start } = session;
+  const { state, dispatch } = session;
   const { index, active } = state;
   const answer = state.answers[index];
-  const evaluation = answer.evaluation;
   const change = (text: string) => dispatch({ type: "edit", index, text });
   return (
     <div className="ix-editor">
@@ -44,14 +32,6 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
             <small className="ix-answer-status">{answerStatus(answer)}</small>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!!active}
-          onClick={() => change(workspaceSamples[index])}
-        >
-          Вставить пример
-        </Button>
       </div>
       <Textarea
         id="ix-answer"
@@ -67,14 +47,6 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
         </p>
       )}
       <div className="ix-actions">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!!active || !validText(answer.text)}
-          onClick={() => start("evaluation")}
-        >
-          Проверить полноту
-        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -93,27 +65,9 @@ function TranscriptEditor({ session }: { session: InterviewSession }) {
           </Button>
         )}
       </div>
-      {evaluation && (
-        <div className="ix-feedback">
-          <strong>
-            {evaluation.conflicts?.length
-              ? "В ответе есть противоречие"
-              : evaluation.items.every((i) => i.status === "present")
-                ? "Ответ полный"
-                : evaluation.items.every(
-                      (i) => i.status === "explicitly_unknown",
-                    )
-                  ? "Отмечено как неизвестное"
-                  : "Можно подробнее"}
-          </strong>
-          {evaluation.followUp && <p>{evaluation.followUp}</p>}
-        </div>
-      )}
       {active?.phase === "waiting" && (
         <p role="status">
-          {active.kind === "evaluation"
-            ? "Проверяю полноту…"
-            : "Готовлю расшифровку…"}{" "}
+          Готовлю расшифровку…{" "}
           <Button
             variant="ghost"
             size="sm"
@@ -131,7 +85,6 @@ type Props = {
   session: InterviewSession;
   navigate: (index: number) => void;
   close: () => void;
-  connect: () => void;
   preview: () => void;
   previewActive: boolean;
 };
@@ -140,11 +93,10 @@ export function InterviewPanel({
   session,
   navigate,
   close,
-  connect,
   preview,
   previewActive,
 }: Props) {
-  const { state, dispatch, start, seconds } = session;
+  const { state, dispatch, start } = session;
   const { index, active, answers } = state;
   const count = answers.filter((a) => a.confirmed).length;
   const review = state.stage === "review" || state.stage === "result";
@@ -154,7 +106,6 @@ export function InterviewPanel({
   const hasAnswer = answer.text.length > 0;
   const canConfirm = validText(answer.text);
   const pending = !!active && !recording;
-  const live = session.runtime?.mode === "api";
   const draftLabel = previewActive
     ? "Превью открыто"
     : state.result
@@ -199,16 +150,10 @@ export function InterviewPanel({
   }, [index, review, previewActive]);
   return (
     <>
-      <header className="ix-head">
-        <div className="ix-titles">
-          <span className="ix-eyebrow">
-            <i />
-            {live ? "Искра · WikiVibe" : "Искра · Интервью"}
-          </span>
-          <h2 tabIndex={-1} id="ix-interview-title">
-            Создание вакансии
-          </h2>
-        </div>
+      <header className="ix-interview-head">
+        <h2 className="sr-only" tabIndex={-1} id="ix-interview-title">
+          Создание вакансии
+        </h2>
         <Button
           variant="ghost"
           size="icon"
@@ -219,14 +164,6 @@ export function InterviewPanel({
         </Button>
       </header>
       <div className="ix-scroll">
-        {!review && (
-          <div className="ix-question">
-            <h3 ref={heading} tabIndex={-1}>
-              {topic.title}
-            </h3>
-            <p>{topic.hint}</p>
-          </div>
-        )}
         <div className="ix-voice">
           <ProgressRing completed={count} recording={recording} scan>
             <button
@@ -260,11 +197,6 @@ export function InterviewPanel({
           >
             {voiceLabel}
           </label>
-          <span>
-            {recording
-              ? "Демо-запись · " + seconds + " с"
-              : "Темы: " + count + " из 4"}
-          </span>
           {!review && !active && hasAnswer && (
             <Button
               size="sm"
@@ -309,9 +241,6 @@ export function InterviewPanel({
               </div>
             </section>
           )}
-          {!review && !recording && !active && !hasAnswer && (
-            <small>Демо-запись · без микрофона</small>
-          )}
         </div>
         <nav className="ix-topics" aria-label="Темы интервью">
           {topics.map((item, i) => (
@@ -331,13 +260,30 @@ export function InterviewPanel({
                 {answers[i].confirmed ? (
                   <Check />
                 ) : (
-                  <span className="ix-num">0{i + 1}</span>
+                  <span className="ix-topic-dot" />
                 )}
-                {item.short}
+                <span className="ix-topic-full">
+                  {
+                    ["Задачи", "Первые полгода", "Дальнейший фокус", "Знания"][
+                      i
+                    ]
+                  }
+                </span>
+                <span className="ix-topic-short">
+                  {["Задачи", "Полгода", "Дальше", "Знания"][i]}
+                </span>
               </Badge>
             </button>
           ))}
         </nav>
+        {!review && (
+          <div className="ix-question">
+            <h3 ref={heading} tabIndex={-1}>
+              {topic.title}
+            </h3>
+            <p>{topic.hint}</p>
+          </div>
+        )}
         {review ? (
           <section className="ix-review">
             <h3 ref={heading} tabIndex={-1}>
@@ -364,63 +310,15 @@ export function InterviewPanel({
             {state.message}
           </p>
         )}
-        {session.runtime?.mode === "fixtures" && (
-          <details className="ix-demo-options">
-            <summary>Параметры демо</summary>
-            <label>
-              Следующая операция{" "}
-              <select
-                value={state.outcome}
-                onChange={(e) =>
-                  dispatch({
-                    type: "outcome",
-                    outcome: e.target.value as Outcome,
-                  })
-                }
-              >
-                <option value="success">Успех</option>
-                <option value="error">Ошибка</option>
-                <option value="timeout">Тайм-аут</option>
-              </select>
-            </label>
-            {!review && index === 3 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  dispatch({ type: "edit", index, text: conflictingSkills })
-                }
-              >
-                Пример противоречия
-              </Button>
-            )}
-          </details>
-        )}
-        <Button size="sm" variant="ghost" onClick={connect}>
-          <Link2 />
-          Подключить существующую
-        </Button>
       </div>
-      <footer className="ix-foot">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!answers.some((a) => a.text)}
-          onClick={() => downloadText(summaryText(state), "сводка.txt")}
-        >
-          <FileText />
-          Сводка .txt
-        </Button>
-        {!review && state.result && (
+      {!review && state.result && (
+        <footer className="ix-foot ix-interview-foot">
           <Button onClick={preview}>
             <FileText />
             Открыть черновик
           </Button>
-        )}
-        {live && (
-          <small>Проверка и черновик отправляют текст в WikiVibe.</small>
-        )}
-      </footer>
+        </footer>
+      )}
     </>
   );
 }

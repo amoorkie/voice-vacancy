@@ -23,13 +23,13 @@
   --color-destructive: #9c3131;
   --color-border: #dedfdd;
   --color-input: #d5d8d5;
-  --color-ring: #716538;
+  --color-ring: #4b5c5b;
   --color-sidebar: #fafaf9;
   --color-sidebar-foreground: #232424;
   --color-sidebar-border: #e2e3e1;
   --color-sidebar-accent: #f0f1ef;
   --color-sidebar-accent-foreground: #202121;
-  --color-sidebar-ring: #716538;
+  --color-sidebar-ring: #4b5c5b;
   --color-sidebar-primary: #171818;
   --color-sidebar-primary-foreground: white;
 }

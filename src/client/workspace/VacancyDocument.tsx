@@ -1,60 +1,11 @@
-// Читатель видит готовый текст вакансии, а источники открывает отдельно по необходимости.
+// Готовая вакансия редактируется прямо в статье и обложке.
 import { RotateCcw } from "lucide-react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { EditableList } from "./EditableList";
-import {
-  sectionIds,
-  sectionNames,
-  type SectionId,
-} from "../../contracts/interview";
-import { topics } from "../../domain/fixtures";
+import { sectionNames, type SectionId } from "../../contracts/interview";
 import type { Result } from "../../domain/session";
 import { vacancyDocument } from "./vacancy-document";
-
-/** Показывает источники исходной генерации даже после ручного изменения раздела. */
-function Sources({ result }: { result: Result }) {
-  return (
-    <details className="ix-sources">
-      <summary>Источники черновика</summary>
-      {sectionIds.map((id) => {
-        const claims = result.generated.claims?.[id];
-        const refs = result.generated.sources[id] ?? [];
-        if (!claims?.length && !refs.length) return null;
-        return (
-          <section key={id}>
-            <h4>
-              {sectionNames[id]}
-              {result.edits[id] !== undefined ? " · изменено вручную" : ""}
-            </h4>
-            {claims?.length
-              ? claims.map((c) => (
-                  <div key={c.id}>
-                    <strong>{c.text}</strong>
-                    {c.sourceRefs.map((ref, i) => (
-                      <blockquote key={i}>
-                        {ref.questionId} · {ref.quote}
-                      </blockquote>
-                    ))}
-                    {c.reason === "not-mentioned" && (
-                      <p>В ответах не указано.</p>
-                    )}
-                  </div>
-                ))
-              : refs.map((source) => {
-                  const i = topics.findIndex((t) => t.id === source);
-                  return (
-                    <blockquote key={source}>
-                      {topics[i].short} · {result.sourceTexts[i]}
-                    </blockquote>
-                  );
-                })}
-          </section>
-        );
-      })}
-    </details>
-  );
-}
 
 type Props = {
   result: Result;
@@ -153,7 +104,6 @@ export function VacancyDocument({ result, onChange, onUndo }: Props) {
           </section>
         ))}
       </article>
-      <Sources result={result} />
     </>
   );
 }

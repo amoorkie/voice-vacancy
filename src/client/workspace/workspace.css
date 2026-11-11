@@ -35,7 +35,7 @@
 }
 .isk-shell :focus-visible,
 [data-mobile="true"] :focus-visible {
-  outline: 2px solid #74663b;
+  outline: 2px solid #4b5c5b;
   outline-offset: 2px;
 }
 .isk-main {
@@ -50,7 +50,6 @@
   border-bottom: 1px solid #e8e9e7;
 }
 .isk-topbar > div,
-.isk-demo,
 .isk-job-label,
 .isk-meta,
 .isk-meta span,
@@ -75,21 +74,12 @@
   color: #989c98;
 }
 .isk-crumb,
-.isk-demo,
 .isk-card-head small,
 .isk-kpis span,
 .isk-analysis p,
 .isk-card dt,
 .isk-meta {
   color: #616661;
-}
-.isk-demo {
-  gap: 6px;
-  font-size: 12px;
-}
-.isk-demo svg {
-  width: 14px;
-  height: 14px;
 }
 .isk-side-head {
   padding: 20px 14px 12px;
@@ -145,23 +135,54 @@
   border: 1px solid #dfe1dc;
   background: white;
 }
-.isk-filter {
-  gap: 7px;
+/* Select сохраняет оформление и размер списка вне портала боковой панели. */
+.isk-filter[data-slot="select-trigger"] {
   width: 100%;
-  padding: 0 9px;
-  border: 1px solid #dedfdd;
-  border-radius: 7px;
-  background: white;
-}
-.isk-filter svg {
-  width: 14px;
-  height: 14px;
-}
-.isk-filter select {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
+  min-height: 35px;
+  gap: 8px;
+  padding: 0 10px;
   font-size: 12px;
+  background: #fff;
+  box-shadow: none;
+}
+.isk-filter [data-slot="select-value"] {
+  flex: 1;
+  text-align: left;
+}
+.isk-status-popup {
+  color: #202527;
+  font:
+    12px/1.4 "Inter Variable",
+    Arial,
+    sans-serif;
+  border: 1px solid #e0e4e1;
+  border-radius: 10px;
+  padding: 3px;
+  background: #fff;
+  box-shadow: 0 8px 24px #2025271c;
+}
+.isk-status-popup [data-slot="select-item"] {
+  cursor: pointer;
+  min-height: 34px;
+  border-radius: 6px;
+  padding: 7px 30px 7px 10px;
+  font-size: 12px;
+}
+.isk-status-popup [data-highlighted] {
+  outline: none;
+  background: #f0f3f2;
+  color: #202527;
+}
+.isk-find input:focus-visible,
+.isk-filter:focus-visible {
+  outline: 2px solid #4b5c5b;
+  outline-offset: 2px;
+  border-color: #4b5c5b;
+  box-shadow: none;
+}
+:where(.isk-shell, [data-mobile="true"]) ::selection {
+  color: #fff;
+  background: #3e5554;
 }
 .isk-side-body {
   padding: 4px 12px;

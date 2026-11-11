@@ -15,9 +15,22 @@ async function enter(page: Page) {
     page.getByRole("heading", { name: "Создание вакансии", exact: true }),
   ).toBeFocused();
 }
-/** Подтверждает тему так же, как это делает руководитель в демо. */
+/** Заполняет редактор и подтверждает тему через обычное действие на круге. */
 async function confirm(page: Page, sample = "Вставить пример") {
-  await page.getByRole("button", { name: sample, exact: true }).click();
+  if (sample === "Пока не знаю")
+    await page.getByRole("button", { name: sample, exact: true }).click();
+  else {
+    const index = await page
+      .locator(".ix-topics button")
+      .evaluateAll((buttons) =>
+        buttons.findIndex(
+          (button) => button.getAttribute("aria-current") === "step",
+        ),
+      );
+    await page
+      .getByLabel("Расшифровка", { exact: true })
+      .fill(workspaceSamples[index]);
+  }
   await page.getByRole("button", { name: "Подтвердить ответ" }).click();
 }
 /** Замеряет каждый доступный кадр, начиная до действия и заканчивая после CSS-перехода. */
@@ -154,8 +167,10 @@ test("запись и ручные правки сохраняются отде�
   await page.getByRole("button", { name: "Дополнить запись" }).click();
   await page.getByRole("button", { name: "Остановить запись" }).click();
   await page.getByRole("button", { name: "Заменить текст" }).click();
-  await page.getByRole("button", { name: "Проверить полноту" }).click();
-  await expect(page.getByText("Ответ полный", { exact: true })).toBeVisible();
+  await expect(answer).toHaveValue(workspaceSamples[0]);
+  await expect(
+    page.getByRole("button", { name: "Проверить полноту" }),
+  ).toHaveCount(0);
   await expect(page.getByRole("progressbar")).toHaveAttribute(
     "aria-valuenow",
     "0",
@@ -173,6 +188,32 @@ test("запись и ручные правки сохраняются отде�
 test("ошибка, тайм-аут, нехватка данных и отмена сборки сохраняют ответы", async ({
   page,
 }) => {
+  await page.clock.install();
+  await page.route("**/api/config", (route) =>
+    route.fulfill({
+      json: { mode: "api", csrfToken: "local-test", model: null },
+    }),
+  );
+  // Сетевые ответы задаются в тесте, без отладочных кнопок в продукте.
+  let outcome = "waiting";
+  await page.route("**/api/vacancy", async (route) => {
+    if (outcome === "waiting") return;
+    if (outcome === "error") {
+      await route.fulfill({
+        status: 503,
+        json: { message: "Сервис недоступен. Ваш текст сохранён." },
+      });
+      return;
+    }
+    const input = route.request().postDataJSON();
+    await route.fulfill({
+      json: {
+        requestId: input.requestId,
+        sessionId: input.sessionId,
+        value: outcome === "insufficient" ? "insufficient" : {},
+      },
+    });
+  });
   await enter(page);
   for (let i = 0; i < 4; i++) await confirm(page, "Пока не знаю");
   const create = page.getByRole("button", { name: "Создать черновик" });
@@ -180,29 +221,35 @@ test("ошибка, тайм-аут, нехватка данных и отмен
   await expect(page.getByText("Собираю черновик…")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(create).toBeFocused();
-  await page.getByText("Параметры демо").click();
-  for (const [outcome, message] of [
-    ["error", "Тестовый сервис недоступен"],
-    ["timeout", "Тестовое время ожидания истекло"],
-  ]) {
-    await page.getByLabel("Следующая операция").selectOption(outcome);
-    await create.click();
-    await expect(page.getByRole("status")).toContainText(message);
-    await page.keyboard.press("Escape");
-  }
+  outcome = "error";
+  await create.click();
+  await expect(page.getByRole("status")).toContainText("Сервис недоступен");
+  await page.keyboard.press("Escape");
+  outcome = "waiting";
+  const request = page.waitForRequest("**/api/vacancy");
+  await create.click();
+  await request;
+  await page.clock.fastForward(60001);
+  await expect(page.getByRole("status")).toContainText(
+    "Время ожидания истекло",
+  );
+  await page.keyboard.press("Escape");
+  outcome = "insufficient";
   await create.click();
   await expect(page.getByRole("status")).toContainText(
     "Пока недостаточно сведений",
   );
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /Задачи — Подтверждено/ }).click();
+  await expect(page.getByLabel("Расшифровка")).toHaveValue(unknownAnswer);
   await page.getByLabel("Расшифровка").fill("Разобрать новую задачу");
   await page.getByRole("button", { name: "Подтвердить ответ" }).click();
+  outcome = "invalid";
   await create.click();
-  await expect(page.getByRole("status")).toContainText(
-    "Для этого набора нет готового",
+  await expect(page.getByRole("status")).toContainText("Неверный черновик");
+  await expect(page.getByRole("button", { name: "Сводка .txt" })).toHaveCount(
+    0,
   );
-  await expect(page.getByRole("button", { name: "Сводка .txt" })).toBeEnabled();
 });
 
 test("на телефоне активна одна панель, Escape возвращает к ответам и к кабинету", async ({
@@ -214,6 +261,15 @@ test("на телефоне активна одна панель, Escape воз�
   await expect(
     page.getByRole("navigation", { name: "Темы интервью" }).getByRole("button"),
   ).toHaveCount(4);
+  const rows = await page
+    .locator(".ix-topics button")
+    .evaluateAll((buttons) =>
+      buttons.map((button) => Math.round(button.getBoundingClientRect().top)),
+    );
+  expect(new Set(rows).size).toBe(1);
+  await expect(
+    page.getByText(/Демо-запись|Темы:|Параметры демо|WikiVibe/),
+  ).toHaveCount(0);
   for (const phase of ["interview", "preview"]) {
     if (phase === "preview") {
       for (let i = 0; i < 4; i++) await confirm(page);

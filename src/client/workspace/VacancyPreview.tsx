@@ -1,9 +1,9 @@
-// Редактор показывает сохранённую редакцию, её источники и состояние текущей попытки сборки.
+// Превью показывает сохранённую редакцию и состояние текущей попытки сборки.
 import { VacancyDocument } from "./VacancyDocument";
 import { vacancyDocumentText } from "./vacancy-document";
 import { ArrowRight, Copy, Download, RotateCcw } from "lucide-react";
 import { resultStale } from "../../domain/session";
-import { downloadText, summaryText } from "../export";
+import { downloadText } from "../export";
 import type { InterviewSession } from "../interview/useInterviewSession";
 import { Button } from "../ui/button";
 
@@ -28,11 +28,6 @@ export function VacancyPreview({
           <h2 tabIndex={-1} id="ix-preview-title">
             Черновик вакансии
           </h2>
-          {result && !waiting && (
-            <small className="ix-edit-hint">
-              Нажмите на текст, чтобы изменить
-            </small>
-          )}
         </div>
         <div className="ix-actions">
           <Button
@@ -49,7 +44,6 @@ export function VacancyPreview({
         {waiting ? (
           <div className="ix-notice" role="status">
             <strong>Собираю черновик…</strong>
-            <p>Использую четыре подтверждённых ответа.</p>
             <Button variant="outline" onClick={back}>
               Отменить сборку
             </Button>
@@ -90,11 +84,8 @@ export function VacancyPreview({
         )}
       </div>
       <footer className="ix-foot">
-        <Button variant="ghost" size="sm" onClick={back}>
-          <ArrowRight />К интервью
-        </Button>
         <div className="ix-actions">
-          {result && !waiting ? (
+          {result && !waiting && (
             <>
               <Button
                 variant="outline"
@@ -114,15 +105,6 @@ export function VacancyPreview({
                 Скачать .txt
               </Button>
             </>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadText(summaryText(state), "сводка.txt")}
-            >
-              <Download />
-              Сводка .txt
-            </Button>
           )}
         </div>
       </footer>
