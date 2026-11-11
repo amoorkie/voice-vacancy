@@ -159,9 +159,12 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   height: 100%;
   overflow: visible;
 }
-/* Деления растут от внутреннего края кольца. Задержка задаёт бегущий фронт каждой четверти. */
+/* Задержка задаёт бегущий фронт. При записи громкость меняет длину волны, сохраняя цвет прогресса. */
 .ix-voice .progress-segment {
-  stroke: #a2a9ac;
+  --tick-scale: 1;
+  --tick-color: #a2a9ac;
+  --voice-gain: 2.4;
+  stroke: var(--tick-color);
   stroke-width: 4.3;
   stroke-linecap: round;
   transform-origin: 200px 34px;
@@ -170,22 +173,27 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
     stroke 220ms ease var(--segment-delay);
 }
 .ix-voice .progress-segment.is-filled {
-  stroke: #268750;
+  --tick-scale: 2.95;
+  --tick-color: #268750;
+  --voice-gain: 0.8;
+  stroke: var(--tick-color);
   transform: scaleY(2.95);
 }
-.ix-voice .is-recording .progress-segment:not(.is-filled) {
+.ix-voice .is-recording .progress-segment {
   animation: ix-scan 1.68s ease-in-out var(--scan-lag) infinite;
 }
 @keyframes ix-scan {
   0%,
   32%,
   100% {
-    transform: scaleY(1);
-    stroke: #a2a9ac;
+    transform: scaleY(var(--tick-scale));
+    stroke: var(--tick-color);
   }
   12% {
-    transform: scaleY(2.35);
-    stroke: #5c7480;
+    transform: scaleY(
+      calc(var(--tick-scale) + 0.12 + var(--voice-level, 0) * var(--voice-gain))
+    );
+    stroke: var(--tick-color);
   }
 }
 .ix-voice .orbit-center {
@@ -317,6 +325,9 @@ body:has(.composer-host) [data-slot="sheet-overlay"] {
   border-radius: 50%;
   background: currentColor;
   opacity: 0.6;
+}
+.ix-topic-check {
+  stroke-width: 2.25;
 }
 .ix-topics [data-slot="badge"] svg {
   flex-shrink: 0;

@@ -76,15 +76,35 @@ for (const silent of [true, false]) {
                 .locator(".ix-glass")
                 .evaluate((node) =>
                   Number(
-                    (node as HTMLElement).style.getPropertyValue(
-                      "--voice-level",
-                    ),
+                    getComputedStyle(node).getPropertyValue("--voice-level"),
                   ),
                 ),
             )
             .toBeGreaterThan(0);
         // AudioWorklet должен успеть принять блоки и для проверки полностью беззвучного потока.
         await page.waitForTimeout(1100);
+        const tick = await page
+          .locator(".ix-voice .progress-segment")
+          .first()
+          .evaluate((node) => {
+            const animation = node.getAnimations()[0];
+            animation.pause();
+            animation.currentTime = 201.6;
+            return {
+              level: Number(
+                getComputedStyle(node).getPropertyValue("--voice-level"),
+              ),
+              length: new DOMMatrix(getComputedStyle(node).transform).d,
+            };
+          });
+        // Сравниваю один и тот же гребень волны: различие должно приходить именно от микрофона.
+        if (silent) {
+          expect(tick.level).toBe(0);
+          expect(tick.length).toBeCloseTo(1.12, 2);
+        } else {
+          expect(tick.level).toBeGreaterThan(0);
+          expect(tick.length).toBeGreaterThan(1.12);
+        }
         await page.getByRole("button", { name: "Остановить запись" }).click();
         const answer = page.getByLabel("Расшифровка", { exact: true });
         if (silent) {
@@ -93,6 +113,7 @@ for (const silent of [true, false]) {
           );
           await expect(answer).toHaveValue("");
           expect(uploads).toBe(0);
+          await expect(page.locator(".ix-topic-check")).toHaveCount(0);
           await expect(
             page.getByRole("button", { name: "Подтвердить ответ" }),
           ).toHaveCount(0);
@@ -101,6 +122,10 @@ for (const silent of [true, false]) {
             "Это распознанная речь, полученная с сервера.",
           );
           expect(uploads).toBe(1);
+          await expect(page.locator(".ix-topic-check")).toHaveCount(1);
+          await expect(
+            page.locator(".ix-topics button").first().locator(".ix-topic-dot"),
+          ).toHaveCount(0);
         }
         await expect(page.getByRole("progressbar")).toHaveAttribute(
           "aria-valuenow",

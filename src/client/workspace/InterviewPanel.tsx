@@ -1,5 +1,5 @@
 // Интервью и обзор используют один сеанс и остаются в правой панели при открытии превью.
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -165,12 +165,16 @@ export function InterviewPanel({
       </header>
       <div className="ix-scroll">
         <div className="ix-voice">
-          <ProgressRing completed={count} recording={recording} scan>
+          <ProgressRing
+            completed={count}
+            recording={recording}
+            voiceLevel={session.voiceLevel}
+            scan
+          >
             <button
               id="ix-main-action"
               className="ix-glass"
               data-complete={count === 4}
-              style={{ "--voice-level": session.voiceLevel } as CSSProperties}
               type="button"
               aria-disabled={
                 previewActive ||
@@ -255,13 +259,13 @@ export function InterviewPanel({
             >
               <Badge
                 variant="outline"
-                data-done={answers[i].confirmed}
+                data-done={validText(answers[i].text)}
                 data-active={!review && i === index}
               >
-                {answers[i].confirmed ? (
-                  <Check />
+                {validText(answers[i].text) ? (
+                  <Check className="ix-topic-check" aria-hidden="true" />
                 ) : (
-                  <span className="ix-topic-dot" />
+                  <span className="ix-topic-dot" aria-hidden="true" />
                 )}
                 <span className="ix-topic-full">
                   {
